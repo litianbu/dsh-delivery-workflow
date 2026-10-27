@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "defaults": {
+    "branchPrefix": "feat/",
+    "envBranches": {
+      "test": "test",
+      "prod": "main"
+    },
+    "timeoutMinutes": 30
+  },
+  "projects": {
+    "tongxi-biomap": {
+      "path": "/absolute/path/to/tongxi-biomap",
+      "envBranches": {
+        "test": "test",
+        "prod": "main"
+      },
+      "setup": [
+        "./scripts/setup.sh"
+      ],
+      "checks": [
+        {
+          "name": "backend-tests",
+          "run": "cd backend && .venv/bin/python -m pytest -q",
+          "required": true,
+          "timeoutMinutes": 15
+        },
+        {
+          "name": "frontend-tests",
+          "run": "cd frontend && pnpm test",
+          "required": true,
+          "timeoutMinutes": 10
+        },
+        {
+          "name": "frontend-build",
+          "run": "cd frontend && pnpm run build",
+          "required": true,
+          "timeoutMinutes": 10
+        },
+        {
+          "name": "frontend-lint",
+          "run": "cd frontend && pnpm lint",
+          "required": false,
+          "timeoutMinutes": 10
+        }
+      ],
+      "jenkins": {
+        "test": {
+          "job": "tongxi-biomap-test",
+          "params": {
+            "DEPLOY_ENV": "test"
+          }
+        },
+        "prod": {
+          "job": "tongxi-biomap-prod",
+          "params": {
+            "DEPLOY_ENV": "prod"
+          }
+        }
+      },
+      "deploy": {
+        "test": {
+          "runner": "ssh",
+          "host": "",
+          "remotePath": "/absolute/path/to/tongxi-biomap",
+          "script": "scripts/deploy-k8s.sh",
+          "args": [
+            "test",
+            "{tag}"
+          ],
+          "namespace": "osplatform",
+          "healthUrl": "http://172.30.16.4:30180/api/health",
+          "timeoutSeconds": 300
+        },
+        "prod": {
+          "runner": "ssh",
+          "host": "",
+          "remotePath": "/absolute/path/to/tongxi-biomap",
+          "preview": {
+            "script": "scripts/apply-prod-k8s.sh",
+            "args": [
+              "{tag}"
+            ]
+          },
+          "apply": {
+            "script": "scripts/apply-prod-k8s.sh",
+            "args": [
+              "{tag}",
+              "--apply"
+            ]
+          },
+          "namespace": "osplatform",
+          "healthUrl": "",
+          "timeoutSeconds": 300
+        }
+      }
+    }
+  },
+  "groups": {
+    "tongxi": [
+      "tongxi-biomap"
+    ]
+  }
+}

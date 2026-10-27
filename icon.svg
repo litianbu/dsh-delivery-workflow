@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Delivery workflow">
+  <rect width="64" height="64" rx="14" fill="#0f172a"/>
+  <rect x="12" y="16" width="14" height="10" rx="2" fill="#38bdf8"/>
+  <rect x="38" y="16" width="14" height="10" rx="2" fill="#38bdf8"/>
+  <rect x="12" y="38" width="14" height="10" rx="2" fill="#22c55e"/>
+  <rect x="38" y="38" width="14" height="10" rx="2" fill="#22c55e"/>
+  <path d="M26 21h12M26 43h12M19 26v12M45 26v12" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M30 32l4 4 4-4" fill="none" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 -2)"/>
+</svg>

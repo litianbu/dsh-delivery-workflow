@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Delivery Workflow",
+    "description": "Feishu requirement, multi-project init, verification, Jenkins build, and Kubernetes deploy."
+  }
+}
