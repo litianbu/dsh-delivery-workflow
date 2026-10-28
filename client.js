@@ -21,6 +21,7 @@ window.__ModuleLoader__.load({
     const STRONG = 'rgba(127,127,127,.38)'
     const CHIP_BG = 'rgba(127,127,127,.12)'
     const CARD_BG = 'rgba(127,127,127,.05)'
+    const FIELD_BG = 'rgba(127,127,127,.08)'
     const OK = '#16a34a'
     const OK_BG = 'rgba(22,163,74,.10)'
     const OK_BD = 'rgba(22,163,74,.40)'
@@ -76,11 +77,16 @@ window.__ModuleLoader__.load({
       wizh2: { fontSize: 14, margin: '0 0 4px' },
       lead: { opacity: 0.6, fontSize: 12, margin: '0 0 18px' },
       steplabel: { fontSize: 12, fontWeight: 600, marginBottom: 8 },
-      field: { display: 'flex', alignItems: 'center', gap: 8, border: '1px solid ' + STRONG, borderRadius: 7, padding: '7px 10px', background: 'transparent', fontSize: 12, marginBottom: 7 },
+      field: { display: 'flex', alignItems: 'center', gap: 8, border: '1px solid ' + STRONG, borderRadius: 7, padding: '7px 10px', background: FIELD_BG, fontSize: 12, marginBottom: 7 },
       fieldVal: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-      input: { font: 'inherit', fontSize: 12, border: '1px solid ' + STRONG, borderRadius: 7, padding: '7px 10px', background: 'transparent', color: 'inherit', width: '100%', boxSizing: 'border-box' },
+      input: { font: 'inherit', fontSize: 12, border: '1px solid ' + STRONG, borderRadius: 7, padding: '7px 10px', background: FIELD_BG, color: 'inherit', width: '100%', boxSizing: 'border-box' },
       bare: { font: 'inherit', fontSize: 12, border: 'none', padding: 0, background: 'transparent', color: 'inherit', flex: 1, minWidth: 0, outline: 'none' },
-      select: { font: 'inherit', fontSize: 12, border: '1px solid ' + STRONG, borderRadius: 7, padding: '6px 10px', background: 'transparent', color: 'inherit', cursor: 'pointer', maxWidth: 260 },
+      select: { font: 'inherit', fontSize: 12, border: '1px solid ' + STRONG, borderRadius: 7, padding: '6px 10px', background: FIELD_BG, color: 'inherit', cursor: 'pointer', maxWidth: 260 },
+      // A single configured project cannot be expressed by a <select>, and a
+      // transparent select reads as plain text in this shell, so projects are
+      // explicit clickable rows with a visible selected state.
+      projRow: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', maxWidth: 520, boxSizing: 'border-box', font: 'inherit', fontSize: 12, color: 'inherit', textAlign: 'left', padding: '8px 10px', borderRadius: 7, border: '1px solid ' + BORDER, background: FIELD_BG, cursor: 'pointer' },
+      projOn: { border: '1px solid ' + ACCENT, background: ACCENT_BG },
       tag: { flex: '0 0 auto', fontSize: 11, padding: '1px 8px', borderRadius: 999, color: OK, border: '1px solid ' + OK_BD, background: OK_BG },
       note: { fontSize: 11, opacity: 0.42, marginTop: 6 },
       warn: { fontSize: 11, color: DANGER, marginTop: 6 },
@@ -148,6 +154,19 @@ window.__ModuleLoader__.load({
       return out
     }
 
+    /** Accept both the array returned by the Host and a name-keyed map. */
+    function projectList(raw) {
+      if (Array.isArray(raw)) {
+        return raw
+          .filter((item) => item && typeof item === 'object')
+          .map((item, index) => ({ name: item.name || 'project-' + index, path: item.path || '' }))
+      }
+      if (raw && typeof raw === 'object') {
+        return Object.keys(raw).map((name) => ({ name: name, path: (raw[name] && raw[name].path) || '' }))
+      }
+      return []
+    }
+
     function Timeline(props) {
       const phases = (props.run && props.run.phases) || {}
       const stage = props.stage
@@ -201,6 +220,7 @@ window.__ModuleLoader__.load({
             h('span', null, '项目 ', h('code', { style: S.code }, projects.join(', ') || '-')),
             h('span', null, '分支 ', h('code', { style: S.code }, run.branch || '-')),
             h('span', null, '环境 ', h('code', { style: S.code }, run.env || '-')),
+            run.sessionId ? h('span', null, '会话 ', h('code', { style: S.code }, run.sessionId)) : null,
             stage === 'closed' && run.closedAt ? h('span', null, String(run.closedAt).slice(0, 10) + ' 手动标记完成') : null),
           h(Timeline, { run: run, stage: stage }),
           live ? h('div', { style: S.actions },
@@ -243,15 +263,16 @@ window.__ModuleLoader__.load({
         requirementId: '',
         title: '',
         docs: [''],
-        project: (props.projects[0] && props.projects[0].name) || '',
+        project: '',
         env: props.envs[0] || 'test',
         base: '',
         branch: '',
       })
-      // Real local branches of the selected project, so "\u57fa\u4e8e" offers
-      // the branches that actually exist (test / main / ...), never a guess.
       const [br, setBr] = useState({ status: 'idle', local: [], current: '', blocking: [], error: null })
-      const projectName = v.project
+
+      // Fall back to the first configured project so the form is usable even
+      // before the user clicks a row (and when only one project exists).
+      const projectName = v.project || (props.projects[0] && props.projects[0].name) || ''
 
       useEffect(() => {
         if (!projectName) {
@@ -291,6 +312,13 @@ window.__ModuleLoader__.load({
       }
       const addDoc = () => setV(Object.assign({}, v, { docs: v.docs.concat(['']) }))
       const dropDoc = (index) => setV(Object.assign({}, v, { docs: v.docs.filter((_, i) => i !== index) }))
+      // Selecting the project that is already active must not disturb the
+      // branch choice: with a single configured project the fallback has
+      // already picked it, so a "change" here could only reset 基于.
+      const pickProject = (name) => {
+        if (!name || name === projectName) return
+        setV(Object.assign({}, v, { project: name, base: '' }))
+      }
 
       const docUrls = v.docs.map((item) => String(item || '').trim()).filter(Boolean)
 
@@ -298,16 +326,22 @@ window.__ModuleLoader__.load({
         const id = String(v.requirementId || '').trim()
         const title = String(v.title || '').trim()
         if (!id || !title) { props.onWarn('需求 ID 和标题都要填'); return }
-        if (!v.project) { props.onWarn('至少选一个项目'); return }
+        if (!projectName) { props.onWarn('至少选一个项目'); return }
         if (br.status === 'error') { props.onWarn('读不到分支：' + br.error); return }
-        const extra = { requirementId: id, title: title, env: v.env || 'test', projects: [v.project], createBranch: true }
+        const extra = {
+          requirementId: id,
+          title: title,
+          env: v.env || 'test',
+          projects: [projectName],
+          createBranch: true,
+          createSession: true,
+        }
         if (v.base) extra.base = v.base
         if (v.branch.trim()) extra.branch = v.branch.trim()
         if (docUrls.length) { extra.docUrls = docUrls; extra.docUrl = docUrls[0] }
         props.onSubmit(extra)
       }
 
-      const projectPath = (props.projects.filter((p) => p.name === v.project)[0] || {}).path || ''
       const branchChoices = br.local.length ? br.local : (br.current ? [br.current] : [])
 
       return h('div', { style: S.wizard },
@@ -344,14 +378,26 @@ window.__ModuleLoader__.load({
             h('span', { style: { fontSize: 11, opacity: 0.42 } }, docUrls.length ? String(docUrls.length) + ' 个链接' : '可留空')),
           h('div', { style: S.note }, '支持多个飞书文档；第一个作为需求文档，其余在 intake 阶段一并拉取。')),
         h(Step, { no: 3, label: '本地项目 · 分支', on: true },
+          props.projects.length === 1
+            // One configured project: there is nothing to choose, so show it as
+            // a settled field instead of a clickable row that cannot change.
+            ? h('div', { style: Object.assign({}, S.field, { marginBottom: 10 }) },
+                h('span', { style: { opacity: 0.5 } }, '项目'),
+                h('span', { style: { fontWeight: 500 } }, props.projects[0].name),
+                h('span', { style: { fontSize: 11, opacity: 0.4, marginLeft: 'auto', wordBreak: 'break-all', textAlign: 'right' } }, props.projects[0].path || ''),
+                h('span', { style: S.tag }, '当前项目'))
+            : props.projects.length > 1
+              ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 } },
+                  props.projects.map((p) => h('button', {
+                    key: p.name,
+                    onClick: () => pickProject(p.name),
+                    style: projectName === p.name ? Object.assign({}, S.projRow, S.projOn) : S.projRow,
+                  },
+                    h('span', { style: { fontSize: 10, opacity: 0.85 } }, projectName === p.name ? '\u25cf' : '\u25cb'),
+                    h('span', { style: { fontWeight: projectName === p.name ? 600 : 400 } }, p.name),
+                    h('span', { style: { fontSize: 11, opacity: 0.4, marginLeft: 'auto', wordBreak: 'break-all', textAlign: 'right' } }, p.path || ''))))
+              : h('div', { style: S.empty }, '配置里没有项目'),
           h('div', { style: S.inline },
-            h('span', { style: { fontSize: 11, opacity: 0.5 } }, '项目'),
-            props.projects.length
-              ? h('select', { style: S.select, value: v.project, onChange: set('project') },
-                  props.projects.map((p) => h('option', { key: p.name, value: p.name }, p.name)))
-              : h('span', { style: S.empty }, '配置里没有项目'),
-            h('span', { style: { fontSize: 11, opacity: 0.36, wordBreak: 'break-all' } }, projectPath)),
-          h('div', { style: Object.assign({}, S.inline, { marginTop: 8 }) },
             h('span', { style: { fontSize: 11, opacity: 0.5 } }, '基于'),
             branchChoices.length
               ? h('select', { style: S.select, value: v.base || branchChoices[0], onChange: set('base') },
@@ -373,10 +419,10 @@ window.__ModuleLoader__.load({
             : null),
         h(Step, { no: 4, label: '创建分支并开始', on: true },
           h('div', { style: Object.assign({}, S.note, { marginTop: 0, fontSize: 12 }) },
-            '会在项目仓库里真的基于「' + (v.base || '当前分支') + '」创建分支，并生成一条交付记录。'),
+            '会在 ' + (projectName || '项目') + ' 仓库里真的基于「' + (v.base || '当前分支') + '」创建分支，并在 DSH 里新开一个对话。'),
           h('div', { style: S.wizfoot },
             h('button', { style: Object.assign({}, S.primary, props.busy ? { opacity: 0.5 } : null), disabled: props.busy, onClick: submit },
-              props.busy ? '创建中…' : '创建分支并新建交付'),
+              props.busy ? '创建中…' : '创建分支并新建会话'),
             h('button', { style: S.ghost, onClick: props.onCancel }, '取消'),
             h('span', { style: S.hint }, '创建后可立即跑验证'))))
     }
@@ -411,7 +457,7 @@ window.__ModuleLoader__.load({
             if (failed) {
               setNote({ kind: 'error', text: err ? ((err.code || 'ERROR') + ' · ' + (err.message || '')) : '执行失败' })
             } else {
-              setNote({ kind: 'ok', text: String((res.body && res.body.summary) || '已完成').split('\n')[0] })
+              setNote({ kind: 'ok', text: String((res.body && res.body.summary) || '已完成') })
             }
             load()
             return !failed
@@ -426,7 +472,7 @@ window.__ModuleLoader__.load({
       const onAction = (action, run) => post(action, { run: run.id })
 
       const data = state.data || {}
-      const projects = (data.config && Array.isArray(data.config.projects)) ? data.config.projects : []
+      const projects = projectList(data.config && data.config.projects)
       const envs = (data.config && Array.isArray(data.config.envs)) ? data.config.envs : []
       const runs = Array.isArray(data.runs) ? data.runs : []
       const active = runs.filter((r) => stageOf(r) !== 'closed')
@@ -446,7 +492,7 @@ window.__ModuleLoader__.load({
               creating ? '收起向导' : '+ 新建需求')),
           note ? h('div', {
             style: {
-              fontSize: 12, padding: '9px 12px', borderRadius: 8, marginBottom: 12,
+              fontSize: 12, padding: '9px 12px', borderRadius: 8, marginBottom: 12, whiteSpace: 'pre-line',
               border: '1px solid ' + (note.kind === 'error' ? 'rgba(220,38,38,.45)' : BORDER),
               background: note.kind === 'error' ? 'rgba(220,38,38,.08)' : 'transparent',
               opacity: note.kind === 'error' ? 1 : 0.72,
