@@ -25,6 +25,7 @@ window.__ModuleLoader__.load({
     const OK_BG = 'rgba(22,163,74,.10)'
     const OK_BD = 'rgba(22,163,74,.40)'
     const ACCENT_BG = 'rgba(127,127,127,.14)'
+    const DANGER = 'rgba(220,38,38,.9)'
     const mono = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
     const LABEL = {
@@ -50,7 +51,6 @@ window.__ModuleLoader__.load({
       sub: { opacity: 0.42, fontSize: 12 },
       spacer: { flex: 1 },
       ws: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.75, border: '1px solid ' + BORDER, borderRadius: 7, padding: '5px 10px', background: CARD_BG },
-      btn: { font: 'inherit', fontSize: 12, padding: '6px 13px', borderRadius: 7, border: '1px solid ' + STRONG, background: CARD_BG, color: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' },
       primary: { font: 'inherit', fontSize: 12, padding: '6px 13px', borderRadius: 7, border: '1px solid ' + PRIMARY_BG, background: PRIMARY_BG, color: PRIMARY_FG, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' },
       ghost: { font: 'inherit', fontSize: 12, padding: '6px 13px', borderRadius: 7, border: '1px solid transparent', background: 'transparent', color: 'inherit', opacity: 0.6, cursor: 'pointer' },
       sm: { font: 'inherit', fontSize: 12, padding: '4px 10px', borderRadius: 7, border: '1px solid ' + STRONG, background: CARD_BG, color: 'inherit', cursor: 'pointer' },
@@ -80,12 +80,12 @@ window.__ModuleLoader__.load({
       fieldVal: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
       input: { font: 'inherit', fontSize: 12, border: '1px solid ' + STRONG, borderRadius: 7, padding: '7px 10px', background: 'transparent', color: 'inherit', width: '100%', boxSizing: 'border-box' },
       bare: { font: 'inherit', fontSize: 12, border: 'none', padding: 0, background: 'transparent', color: 'inherit', flex: 1, minWidth: 0, outline: 'none' },
+      select: { font: 'inherit', fontSize: 12, border: '1px solid ' + STRONG, borderRadius: 7, padding: '6px 10px', background: 'transparent', color: 'inherit', cursor: 'pointer', maxWidth: 260 },
       tag: { flex: '0 0 auto', fontSize: 11, padding: '1px 8px', borderRadius: 999, color: OK, border: '1px solid ' + OK_BD, background: OK_BG },
       note: { fontSize: 11, opacity: 0.42, marginTop: 6 },
+      warn: { fontSize: 11, color: DANGER, marginTop: 6 },
       inline: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
       wizfoot: { display: 'flex', gap: 8, alignItems: 'center', paddingTop: 16 },
-      chipOn: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, border: '1px solid ' + ACCENT, color: ACCENT, background: ACCENT_BG, borderRadius: 7, padding: '5px 10px', cursor: 'pointer' },
-      chipOff: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.55, border: '1px solid ' + BORDER, background: 'transparent', borderRadius: 7, padding: '5px 10px', cursor: 'pointer' },
     }
 
     function isClosed(run) {
@@ -132,10 +132,16 @@ window.__ModuleLoader__.load({
       return (run && run.requirement) || {}
     }
 
+    /** Every Feishu link on the run, newest field shape first. */
     function docsOf(run) {
       const out = []
       const requirement = requirementOf(run)
-      if (requirement.docUrl) out.push({ label: '需求文档', kind: '飞书', url: requirement.docUrl })
+      const urls = Array.isArray(requirement.docUrls) && requirement.docUrls.length
+        ? requirement.docUrls
+        : (requirement.docUrl ? [requirement.docUrl] : [])
+      urls.forEach((url, i) => {
+        out.push({ label: urls.length > 1 ? '飞书文档 ' + (i + 1) : '需求文档', kind: '飞书', url: url })
+      })
       const artifacts = (run && run.artifacts) || {}
       if (artifacts.requirement) out.push({ label: '需求 spec', kind: '已生成', url: '' })
       if (artifacts.testcases) out.push({ label: '用例 spec', kind: '已生成', url: '' })
@@ -233,34 +239,77 @@ window.__ModuleLoader__.load({
     }
 
     function Wizard(props) {
-      const projectNames = props.projects.map((p) => p.name)
       const [v, setV] = useState({
-        requirementId: '', title: '', docUrl: '', branch: '',
-        env: props.envs[0] || 'test', projects: projectNames,
+        requirementId: '',
+        title: '',
+        docs: [''],
+        project: (props.projects[0] && props.projects[0].name) || '',
+        env: props.envs[0] || 'test',
+        base: '',
+        branch: '',
       })
+      // Real local branches of the selected project, so "\u57fa\u4e8e" offers
+      // the branches that actually exist (test / main / ...), never a guess.
+      const [br, setBr] = useState({ status: 'idle', local: [], current: '', blocking: [], error: null })
+      const projectName = v.project
+
+      useEffect(() => {
+        if (!projectName) {
+          setBr({ status: 'idle', local: [], current: '', blocking: [], error: null })
+          return undefined
+        }
+        let live = true
+        setBr({ status: 'loading', local: [], current: '', blocking: [], error: null })
+        fetch('/delivery/api/branches?workspace=' + encodeURIComponent(WORKSPACE) + '&project=' + encodeURIComponent(projectName))
+          .then((r) => r.json().then((b) => ({ ok: r.ok, b: b })))
+          .then((res) => {
+            if (!live) return
+            if (!res.ok || res.b.ok === false) {
+              const err = (res.b && res.b.error && res.b.error.message) || '读取分支失败'
+              setBr({ status: 'error', local: [], current: '', blocking: [], error: err })
+              return
+            }
+            const local = res.b.local || []
+            setBr({ status: 'ok', local: local, current: res.b.current || '', blocking: res.b.blocking || [], error: null })
+            setV((prev) => (prev.base || !local.length ? prev : Object.assign({}, prev, { base: res.b.current || local[0] })))
+          })
+          .catch((e) => {
+            if (live) setBr({ status: 'error', local: [], current: '', blocking: [], error: String((e && e.message) || e) })
+          })
+        return () => { live = false }
+      }, [projectName])
+
       const set = (key) => (e) => {
         const next = Object.assign({}, v)
         next[key] = e.target.value
         setV(next)
       }
-      const toggle = (name) => {
-        const has = v.projects.indexOf(name) >= 0
-        setV(Object.assign({}, v, { projects: has ? v.projects.filter((x) => x !== name) : v.projects.concat([name]) }))
+      const setDoc = (index) => (e) => {
+        const docs = v.docs.slice()
+        docs[index] = e.target.value
+        setV(Object.assign({}, v, { docs: docs }))
       }
+      const addDoc = () => setV(Object.assign({}, v, { docs: v.docs.concat(['']) }))
+      const dropDoc = (index) => setV(Object.assign({}, v, { docs: v.docs.filter((_, i) => i !== index) }))
+
+      const docUrls = v.docs.map((item) => String(item || '').trim()).filter(Boolean)
+
       const submit = () => {
         const id = String(v.requirementId || '').trim()
         const title = String(v.title || '').trim()
         if (!id || !title) { props.onWarn('需求 ID 和标题都要填'); return }
-        if (!v.projects.length) { props.onWarn('至少选一个项目'); return }
-        const extra = { requirementId: id, title: title, env: v.env || 'test', projects: v.projects.slice() }
-        const doc = String(v.docUrl || '').trim()
-        const branch = String(v.branch || '').trim()
-        if (doc) extra.docUrl = doc
-        if (branch) extra.branch = branch
+        if (!v.project) { props.onWarn('至少选一个项目'); return }
+        if (br.status === 'error') { props.onWarn('读不到分支：' + br.error); return }
+        const extra = { requirementId: id, title: title, env: v.env || 'test', projects: [v.project], createBranch: true }
+        if (v.base) extra.base = v.base
+        if (v.branch.trim()) extra.branch = v.branch.trim()
+        if (docUrls.length) { extra.docUrls = docUrls; extra.docUrl = docUrls[0] }
         props.onSubmit(extra)
       }
-      const kind = docKindOf(v.docUrl)
-      const selected = projectNames.filter((n) => v.projects.indexOf(n) >= 0)
+
+      const projectPath = (props.projects.filter((p) => p.name === v.project)[0] || {}).path || ''
+      const branchChoices = br.local.length ? br.local : (br.current ? [br.current] : [])
+
       return h('div', { style: S.wizard },
         h('h2', { style: S.wizh2 }, '新建交付'),
         h('p', { style: S.lead }, '填需求号 → 贴飞书文档 → 选项目 → 定分支，四步走完开始开发。'),
@@ -276,48 +325,58 @@ window.__ModuleLoader__.load({
             })),
           h('div', { style: S.note }, '需求 ID 会进入分支名和 run 目录，创建后不建议改。')),
         h(Step, { no: 2, label: '飞书文档', on: true },
-          h('div', { style: S.field },
-            h('span', { style: { opacity: 0.5 } }, '\ud83d\udd17'),
-            h('input', {
-              style: S.bare, value: v.docUrl, placeholder: '粘贴飞书需求文档链接',
-              onChange: set('docUrl'),
-            }),
-            kind ? h('span', { style: S.tag }, '识别为 ' + kind) : null),
-          h('div', { style: S.note }, '粘贴后自动识别类型；用例文档在 intake 阶段按需求文档拉取。')),
-        h(Step, { no: 3, label: '本地项目 · 分支', on: true },
-          h('div', { style: S.field },
-            h('span', { style: { opacity: 0.5 } }, '\ud83d\udcc1'),
-            h('span', { style: Object.assign({}, S.fieldVal, { opacity: selected.length ? 1 : 0.45 }) },
-              selected.length ? selected.join(' , ') : '未选择项目'),
-            h('span', { style: { opacity: 0.45, fontSize: 11 } }, String(selected.length) + ' / ' + String(projectNames.length))),
-          h('div', { style: Object.assign({}, S.inline, { marginBottom: 7 }) },
-            h('span', { style: { fontSize: 11, opacity: 0.5 } }, '最近：'),
-            projectNames.length
-              ? projectNames.map((name) => h('button', {
-                  key: name,
-                  style: v.projects.indexOf(name) >= 0 ? S.chipOn : S.chipOff,
-                  onClick: () => toggle(name),
-                }, name))
-              : h('span', { style: S.empty }, '配置里没有项目')),
+          v.docs.map((doc, i) => {
+            const kind = docKindOf(doc)
+            return h('div', { key: i, style: S.field },
+              h('span', { style: { opacity: 0.5 } }, '\ud83d\udd17'),
+              h('input', {
+                style: S.bare, value: doc,
+                placeholder: i === 0 ? '粘贴飞书需求文档链接' : '再贴一个飞书文档（用例 / 技术方案…）',
+                onChange: setDoc(i),
+              }),
+              kind ? h('span', { style: S.tag }, '识别为 ' + kind) : null,
+              v.docs.length > 1
+                ? h('button', { style: S.smGhost, onClick: () => dropDoc(i), title: '移除' }, '\u00d7')
+                : null)
+          }),
           h('div', { style: S.inline },
+            h('button', { style: S.smGhost, onClick: addDoc }, '+ 再加一个文档'),
+            h('span', { style: { fontSize: 11, opacity: 0.42 } }, docUrls.length ? String(docUrls.length) + ' 个链接' : '可留空')),
+          h('div', { style: S.note }, '支持多个飞书文档；第一个作为需求文档，其余在 intake 阶段一并拉取。')),
+        h(Step, { no: 3, label: '本地项目 · 分支', on: true },
+          h('div', { style: S.inline },
+            h('span', { style: { fontSize: 11, opacity: 0.5 } }, '项目'),
+            props.projects.length
+              ? h('select', { style: S.select, value: v.project, onChange: set('project') },
+                  props.projects.map((p) => h('option', { key: p.name, value: p.name }, p.name)))
+              : h('span', { style: S.empty }, '配置里没有项目'),
+            h('span', { style: { fontSize: 11, opacity: 0.36, wordBreak: 'break-all' } }, projectPath)),
+          h('div', { style: Object.assign({}, S.inline, { marginTop: 8 }) },
             h('span', { style: { fontSize: 11, opacity: 0.5 } }, '基于'),
-            (props.envs.length ? props.envs : ['test', 'prod']).map((enc) => h('button', {
-              key: enc,
-              style: v.env === enc ? S.chipOn : S.chipOff,
-              onClick: () => setV(Object.assign({}, v, { env: enc })),
-            }, enc)),
+            branchChoices.length
+              ? h('select', { style: S.select, value: v.base || branchChoices[0], onChange: set('base') },
+                  branchChoices.map((name) => h('option', { key: name, value: name }, name)))
+              : h('span', { style: { fontSize: 11, opacity: 0.5 } },
+                  br.status === 'loading' ? '读取分支中…' : '无可用分支'),
             h('span', { style: { fontSize: 11, opacity: 0.5 } }, '新建'),
             h('input', {
               style: Object.assign({}, S.input, { flex: 1, minWidth: 220, maxWidth: 340 }),
               value: v.branch, placeholder: '留空按需求号 + 标题自动生成', onChange: set('branch'),
             })),
-          h('div', { style: S.note }, '分支名由需求号 + 标题自动生成，可改。工作区有未提交改动时会拦下。')),
-        h(Step, { no: 4, label: '开始开发', on: true },
+          br.status === 'ok' && br.current
+            ? h('div', { style: S.note }, '当前在 ' + br.current + '，共 ' + String(br.local.length) + ' 个本地分支。')
+            : null,
+          br.status === 'error' ? h('div', { style: S.warn }, br.error) : null,
+          br.blocking.length
+            ? h('div', { style: S.warn },
+                '工作区有 ' + String(br.blocking.length) + ' 个已跟踪文件改动，会拒绝切分支：' + br.blocking.slice(0, 3).join(' ; '))
+            : null),
+        h(Step, { no: 4, label: '创建分支并开始', on: true },
           h('div', { style: Object.assign({}, S.note, { marginTop: 0, fontSize: 12 }) },
-            '创建后得到一条交付记录：可在卡片里反复跑验证 / 构建 / 部署，直到手动标记完成。'),
+            '会在项目仓库里真的基于「' + (v.base || '当前分支') + '」创建分支，并生成一条交付记录。'),
           h('div', { style: S.wizfoot },
             h('button', { style: Object.assign({}, S.primary, props.busy ? { opacity: 0.5 } : null), disabled: props.busy, onClick: submit },
-              props.busy ? '创建中…' : '创建交付记录'),
+              props.busy ? '创建中…' : '创建分支并新建交付'),
             h('button', { style: S.ghost, onClick: props.onCancel }, '取消'),
             h('span', { style: S.hint }, '创建后可立即跑验证'))))
     }
