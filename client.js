@@ -9,6 +9,10 @@ window.__ModuleLoader__.load({
     const { useState, useEffect, useCallback } = React
 
     const WORKSPACE = '/Users/runzhili/Desktop/biomap-delivery'
+    // Captured at apply() time. The shell owns navigation, so a created
+    // delivery hands the new conversation to uiWorkspace.openSession instead of
+    // guessing a URL.
+    let uiContext = null
     // Only the brand tokens below are guaranteed to exist in this shell;
     // everything else is a concrete colour that works in light and dark themes.
     const ACCENT = 'var(--dsw-alias-brand-primary, #2563eb)'
@@ -317,7 +321,46 @@ window.__ModuleLoader__.load({
       // already picked it, so a "change" here could only reset 基于.
       const pickProject = (name) => {
         if (!name || name === projectName) return
-        setV(Object.assign({}, v, { project: name, base: '' }))
+        // Dropping pickedPath returns the step to the configured list, so the
+        // row shown always matches the project that will actually be used.
+        setV(Object.assign({}, v, { project: name, pickedPath: '', base: '' }))
+      }
+      // A directory the user picks is registered as a project first, then used
+      // by name. Registering up front is what makes the later phases (branches,
+      // verify, build, deploy) able to resolve it at all.
+      const pickLocalProject = async () => {
+        const service = uiContext
+          ? (typeof uiContext.get === 'function' ? uiContext.get('uiWorkspace') : null) || uiContext.uiWorkspace
+          : null
+        if (!service || typeof service.pickDirectory !== 'function') {
+          props.onWarn('当前界面不支持目录选择')
+          return
+        }
+        let dir = null
+        try {
+          dir = await service.pickDirectory()
+        } catch (e) {
+          props.onWarn('选择目录失败：' + String((e && e.message) || e))
+          return
+        }
+        if (!dir) return
+        try {
+          const res = await fetch('/delivery/api/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workspace: WORKSPACE, path: dir }),
+          })
+          const body = await res.json().catch(() => null)
+          const err = body && body.error
+          if (!res.ok || !body || body.ok === false) {
+            props.onWarn(err ? String(err.code || 'ERROR') + ' · ' + String(err.message || '') : '登记项目失败')
+            return
+          }
+          const registered = (body && body.project) || {}
+          setV(Object.assign({}, v, { project: registered.name || '', pickedPath: registered.path || dir, base: '' }))
+        } catch (e) {
+          props.onWarn('登记项目失败：' + String((e && e.message) || e))
+        }
       }
 
       const docUrls = v.docs.map((item) => String(item || '').trim()).filter(Boolean)
@@ -378,7 +421,18 @@ window.__ModuleLoader__.load({
             h('span', { style: { fontSize: 11, opacity: 0.42 } }, docUrls.length ? String(docUrls.length) + ' 个链接' : '可留空')),
           h('div', { style: S.note }, '支持多个飞书文档；第一个作为需求文档，其余在 intake 阶段一并拉取。')),
         h(Step, { no: 3, label: '本地项目 · 分支', on: true },
-          props.projects.length === 1
+          v.pickedPath
+            ? h('div', { style: Object.assign({}, S.field, { marginBottom: 10 }) },
+                h('span', { style: { opacity: 0.5 } }, '项目'),
+                h('span', { style: { fontWeight: 600 } }, v.project || '(未命名)'),
+                h('span', { style: { fontSize: 11, opacity: 0.4, marginLeft: 'auto', wordBreak: 'break-all', textAlign: 'right' } }, v.pickedPath),
+                h('span', { style: S.tag }, '本地目录'),
+                h('button', {
+                  style: S.smGhost,
+                  title: '改回配置里的项目',
+                  onClick: () => setV(Object.assign({}, v, { pickedPath: '', project: '', base: '' })),
+                }, '\u00d7'))
+            : props.projects.length === 1
             // One configured project: there is nothing to choose, so show it as
             // a settled field instead of a clickable row that cannot change.
             ? h('div', { style: Object.assign({}, S.field, { marginBottom: 10 }) },
@@ -397,6 +451,11 @@ window.__ModuleLoader__.load({
                     h('span', { style: { fontWeight: projectName === p.name ? 600 : 400 } }, p.name),
                     h('span', { style: { fontSize: 11, opacity: 0.4, marginLeft: 'auto', wordBreak: 'break-all', textAlign: 'right' } }, p.path || ''))))
               : h('div', { style: S.empty }, '配置里没有项目'),
+          h('div', { style: S.inline },
+            h('button', { style: S.smGhost, onClick: pickLocalProject }, '\ud83d\udcc1 选择本地目录…'),
+            v.pickedPath
+              ? h('span', { style: { fontSize: 11, opacity: 0.45 } }, '已登记，可继续选别的目录')
+              : h('span', { style: { fontSize: 11, opacity: 0.42 } }, '选一个本地 git 仓库，自动登记为项目')),
           h('div', { style: S.inline },
             h('span', { style: { fontSize: 11, opacity: 0.5 } }, '基于'),
             branchChoices.length
@@ -458,6 +517,22 @@ window.__ModuleLoader__.load({
               setNote({ kind: 'error', text: err ? ((err.code || 'ERROR') + ' · ' + (err.message || '')) : '执行失败' })
             } else {
               setNote({ kind: 'ok', text: String((res.body && res.body.summary) || '已完成') })
+              const created = res.body && res.body.data && res.body.data.sessionId
+              if (created) {
+                // Land in the conversation the delivery just opened. A missing
+                // service leaves the user on this page with the session id.
+                const service = uiContext
+                  ? (typeof uiContext.get === 'function' ? uiContext.get('uiWorkspace') : null) || uiContext.uiWorkspace
+                  : null
+                if (service && typeof service.openSession === 'function') {
+                  try {
+                    setCreating(false)
+                    service.openSession(created)
+                  } catch (e) {
+                    setNote({ kind: 'ok', text: '已创建，但跳转失败：' + String((e && e.message) || e) })
+                  }
+                }
+              }
             }
             load()
             return !failed
@@ -533,6 +608,7 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots'],
       apply(ctx) {
+        uiContext = ctx
         ctx.slots.inject('sidebar.panellist', () =>
           ctx.slots.register({ name: 'sidebar.panellist', id: 'delivery', order: 20, label: () => '交付流程' }, RailIcon),
         )
