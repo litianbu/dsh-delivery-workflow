@@ -1,6 +1,6 @@
 // Client half of the delivery-workflow bundle.
 // Single column: the host shell already owns navigation, so this page never
-// draws its own rail. A run card is one collapsed row until it is opened.
+// draws its own rail. Layout follows mockup/delivery-page-v2.html.
 window.__ModuleLoader__.load({
   id: '@local/delivery-workflow',
   factory(require) {
@@ -9,44 +9,83 @@ window.__ModuleLoader__.load({
     const { useState, useEffect, useCallback } = React
 
     const WORKSPACE = '/Users/runzhili/Desktop/biomap-delivery'
-    const SUBTLE = '1px solid var(--dsw-alias-border-subtle, rgba(127,127,127,.22))'
-    const BORDER = '1px solid var(--dsw-alias-border-default, rgba(127,127,127,.32))'
+    // Only two alias tokens are guaranteed to exist in this shell; everything
+    // else is a concrete colour that works in both light and dark themes.
+    const ACCENT = 'var(--dsw-alias-brand-primary, #2563eb)'
+    const PRIMARY_BG = 'var(--dsw-alias-button-primary-fill, #2563eb)'
+    const PRIMARY_FG = 'var(--dsw-alias-brand-primary-invert, #ffffff)'
+    const BORDER = 'rgba(127,127,127,.22)'
+    const STRONG = 'rgba(127,127,127,.38)'
+    const CHIP_BG = 'rgba(127,127,127,.12)'
+    const CARD_BG = 'rgba(127,127,127,.05)'
+    const OK = '#16a34a'
+    const OK_BG = 'rgba(22,163,74,.10)'
+    const OK_BD = 'rgba(22,163,74,.40)'
+    const ACCENT_BG = 'rgba(37,99,235,.10)'
     const mono = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
-    // Labels for the phases the host actually records (see lib/run.js PHASES).
     const LABEL = {
       intake: '需求', init: '初始化', develop: '开发', verify: '验证',
-      build: '构建', deploy: '部署', accept: '验收', report: '报告', closed: '已完成',
+      build: '构建', deploy: '部署', accept: '验收', report: '报告', closed: '归档',
     }
     const ORDER = ['intake', 'init', 'develop', 'verify', 'build', 'deploy', 'accept', 'report']
-    // A delivery stays open and re-runnable until someone marks it finished,
-    // so every live run offers these, in this order, however often it is run.
+    // The five stops the page draws in a card, and the phases behind each one.
+    const STOPS = [
+      { label: '需求', phases: ['intake'] },
+      { label: '开发', phases: ['init', 'develop'] },
+      { label: '验证', phases: ['verify'] },
+      { label: '构建', phases: ['build'] },
+      { label: '部署', phases: ['deploy'] },
+    ]
     const OPS = ['verify', 'build', 'deploy']
 
     const S = {
-      main: { height: '100%', minHeight: 0, overflow: 'auto', padding: '22px 28px 70px', font: 'inherit', color: 'inherit', maxWidth: 920, margin: '0 auto', width: '100%', boxSizing: 'border-box' },
-      bar: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' },
+      wrap: { height: '100%', minHeight: 0, overflow: 'auto', font: 'inherit', color: 'inherit', boxSizing: 'border-box' },
+      page: { maxWidth: 980, margin: '0 auto', padding: '26px 32px 80px' },
+      head: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22, flexWrap: 'wrap' },
       h1: { fontSize: 17, margin: 0, fontWeight: 600 },
-      sub: { fontSize: 12, opacity: 0.5 },
-      btn: { font: 'inherit', fontSize: 12, padding: '5px 12px', borderRadius: 7, border: BORDER, background: 'transparent', color: 'inherit', cursor: 'pointer' },
-      sm: { font: 'inherit', fontSize: 12, padding: '3px 9px', borderRadius: 6, border: BORDER, background: 'transparent', color: 'inherit', cursor: 'pointer' },
-      gh: { font: 'inherit', fontSize: 12, padding: '3px 9px', borderRadius: 6, border: '1px solid transparent', background: 'transparent', color: 'inherit', opacity: 0.62, cursor: 'pointer' },
-      lb: { fontSize: 12, opacity: 0.5, margin: '20px 0 9px' },
-      card: { border: SUBTLE, borderRadius: 10, padding: '11px 14px', marginBottom: 8 },
-      row: { display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', flexWrap: 'wrap' },
-      chip: { fontSize: 11, padding: '1px 8px', borderRadius: 999, border: BORDER, opacity: 0.85 },
-      body: { marginTop: 10, paddingTop: 10, borderTop: SUBTLE },
-      meta: { display: 'flex', gap: 15, flexWrap: 'wrap', fontSize: 12, opacity: 0.7, marginBottom: 8 },
-      code: { fontFamily: mono, fontSize: 11.5 },
-      acts: { display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 },
-      hint: { fontSize: 11, opacity: 0.42, marginLeft: 'auto' },
-      input: { font: 'inherit', fontSize: 12, padding: '5px 8px', borderRadius: 6, border: BORDER, background: 'transparent', color: 'inherit', width: '100%', boxSizing: 'border-box' },
-      empty: { fontSize: 12, opacity: 0.45, padding: '6px 0' },
-      fieldLabel: { fontSize: 11, opacity: 0.55, marginBottom: 4 },
+      sub: { opacity: 0.42, fontSize: 12 },
+      spacer: { flex: 1 },
+      ws: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.75, border: '1px solid ' + BORDER, borderRadius: 7, padding: '5px 10px', background: CARD_BG },
+      btn: { font: 'inherit', fontSize: 12, padding: '6px 13px', borderRadius: 7, border: '1px solid ' + STRONG, background: CARD_BG, color: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' },
+      primary: { font: 'inherit', fontSize: 12, padding: '6px 13px', borderRadius: 7, border: '1px solid ' + PRIMARY_BG, background: PRIMARY_BG, color: PRIMARY_FG, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' },
+      ghost: { font: 'inherit', fontSize: 12, padding: '6px 13px', borderRadius: 7, border: '1px solid transparent', background: 'transparent', color: 'inherit', opacity: 0.6, cursor: 'pointer' },
+      sm: { font: 'inherit', fontSize: 12, padding: '4px 10px', borderRadius: 7, border: '1px solid ' + STRONG, background: CARD_BG, color: 'inherit', cursor: 'pointer' },
+      smGhost: { font: 'inherit', fontSize: 12, padding: '4px 10px', borderRadius: 7, border: '1px solid transparent', background: 'transparent', color: 'inherit', opacity: 0.55, cursor: 'pointer' },
+      sectionhead: { display: 'flex', alignItems: 'center', gap: 8, margin: '26px 0 10px', fontSize: 12, opacity: 0.6 },
+      count: { opacity: 0.65 },
+      card: { border: '1px solid ' + BORDER, borderRadius: 10, background: CARD_BG, padding: '15px 17px', marginBottom: 12 },
+      top: { display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', cursor: 'pointer' },
+      id: { fontFamily: mono, fontSize: 12, opacity: 0.62 },
+      title: { fontSize: 14, fontWeight: 600 },
+      badgeBase: { fontSize: 11, padding: '1px 8px', borderRadius: 999, border: '1px solid ' + STRONG, opacity: 0.7 },
+      meta: { display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 9, opacity: 0.62, fontSize: 12 },
+      code: { fontFamily: mono, background: CHIP_BG, padding: '1px 6px', borderRadius: 5 },
+      docs: { display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 10 },
+      doc: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '3px 9px', borderRadius: 6, border: '1px solid ' + BORDER, background: 'transparent', color: 'inherit', textDecoration: 'none' },
+      docKind: { opacity: 0.45, fontSize: 11 },
+      phases: { display: 'flex', alignItems: 'center', margin: '14px 0 12px', flexWrap: 'wrap' },
+      bar: { width: 18, height: 1, background: STRONG, margin: '0 9px' },
+      actions: { display: 'flex', gap: 7, flexWrap: 'wrap', paddingTop: 12, borderTop: '1px solid ' + BORDER, alignItems: 'center' },
+      hint: { fontSize: 12, opacity: 0.42, marginLeft: 'auto' },
+      empty: { fontSize: 12, opacity: 0.42, padding: '2px 0' },
+      wizard: { border: '1px solid ' + STRONG, borderRadius: 12, padding: '20px 22px', background: CARD_BG, marginBottom: 12 },
+      wizh2: { fontSize: 14, margin: '0 0 4px' },
+      lead: { opacity: 0.6, fontSize: 12, margin: '0 0 18px' },
+      steplabel: { fontSize: 12, fontWeight: 600, marginBottom: 8 },
+      field: { display: 'flex', alignItems: 'center', gap: 8, border: '1px solid ' + STRONG, borderRadius: 7, padding: '7px 10px', background: 'transparent', fontSize: 12, marginBottom: 7 },
+      fieldVal: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+      input: { font: 'inherit', fontSize: 12, border: '1px solid ' + STRONG, borderRadius: 7, padding: '7px 10px', background: 'transparent', color: 'inherit', width: '100%', boxSizing: 'border-box' },
+      bare: { font: 'inherit', fontSize: 12, border: 'none', padding: 0, background: 'transparent', color: 'inherit', flex: 1, minWidth: 0, outline: 'none' },
+      tag: { flex: '0 0 auto', fontSize: 11, padding: '1px 8px', borderRadius: 999, color: OK, border: '1px solid ' + OK_BD, background: OK_BG },
+      note: { fontSize: 11, opacity: 0.42, marginTop: 6 },
+      inline: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
+      wizfoot: { display: 'flex', gap: 8, alignItems: 'center', paddingTop: 16 },
+      chipOn: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, border: '1px solid ' + ACCENT, color: ACCENT, background: ACCENT_BG, borderRadius: 7, padding: '5px 10px', cursor: 'pointer' },
+      chipOff: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.55, border: '1px solid ' + BORDER, background: 'transparent', borderRadius: 7, padding: '5px 10px', cursor: 'pointer' },
+      select: { font: 'inherit', fontSize: 12, border: '1px solid ' + BORDER, borderRadius: 7, padding: '5px 10px', background: 'transparent', color: 'inherit' },
     }
 
-    // A run is finished only when a human marks it finished; nothing here
-    // closes a delivery on its own.
     function isClosed(run) {
       return Boolean(run && (run.closed === true || run.status === 'closed'))
     }
@@ -69,26 +108,63 @@ window.__ModuleLoader__.load({
       return last || 'intake'
     }
 
+    function badgeOf(run, stage) {
+      if (stage === 'closed') return { text: '已归档', tone: 'plain' }
+      const phases = run.phases || {}
+      const deployed = phases.deploy && phases.deploy.status === 'passed'
+      if (deployed) return { text: '已部署 ' + (run.env || ''), tone: 'ok' }
+      const word = {
+        intake: '待开发', init: '初始化中', develop: '开发中', verify: '验证中',
+        build: '构建中', deploy: '部署中', accept: '验收中', report: '报告',
+      }[stage] || stage
+      return { text: word, tone: 'live' }
+    }
+
+    function badgeStyle(tone) {
+      if (tone === 'ok') return Object.assign({}, S.badgeBase, { color: OK, border: '1px solid ' + OK_BD, background: OK_BG, opacity: 1 })
+      if (tone === 'live') return Object.assign({}, S.badgeBase, { color: ACCENT, border: '1px solid ' + ACCENT, background: ACCENT_BG, opacity: 1 })
+      return S.badgeBase
+    }
+
     function requirementOf(run) {
       return (run && run.requirement) || {}
     }
 
-    // Documents are whatever the run recorded: the Feishu link plus the spec
-    // files the host wrote. An empty list is normal before intake runs.
     function docsOf(run) {
       const out = []
       const requirement = requirementOf(run)
-      if (requirement.docUrl) out.push({ label: '需求文档', url: requirement.docUrl })
+      if (requirement.docUrl) out.push({ label: '需求文档', kind: '飞书', url: requirement.docUrl })
       const artifacts = (run && run.artifacts) || {}
-      if (artifacts.requirement) out.push({ label: '需求 spec', url: '' })
-      if (artifacts.testcases) out.push({ label: '用例 spec', url: '' })
+      if (artifacts.requirement) out.push({ label: '需求 spec', kind: '已生成', url: '' })
+      if (artifacts.testcases) out.push({ label: '用例 spec', kind: '已生成', url: '' })
       return out
     }
 
-    function field(label, node) {
-      return h('label', { style: { display: 'block', marginBottom: 10 } },
-        h('div', { style: S.fieldLabel }, label),
-        node)
+    function Timeline(props) {
+      const phases = (props.run && props.run.phases) || {}
+      const stage = props.stage
+      const nodes = []
+      STOPS.forEach((stop, index) => {
+        if (index > 0) nodes.push(h('span', { key: 'bar' + index, style: S.bar }))
+        let done = false
+        let now = false
+        stop.phases.forEach((name) => {
+          const entry = phases[name]
+          if (entry && entry.status === 'passed') done = true
+          if (name === stage) now = true
+        })
+        const mark = done ? '\u2713' : (now ? '\u25cf' : '\u25cb')
+        const markStyle = done
+          ? { border: '1px solid ' + OK_BD, color: OK }
+          : (now ? { border: '1px solid ' + ACCENT, color: ACCENT, background: ACCENT_BG } : { border: '1px solid ' + STRONG })
+        nodes.push(h('span', {
+          key: stop.label,
+          style: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: now ? 1 : (done ? 0.75 : 0.42), fontWeight: now ? 500 : 400 },
+        },
+          h('span', { style: Object.assign({ width: 16, height: 16, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: 10 }, markStyle) }, mark),
+          stop.label))
+      })
+      return h('div', { style: S.phases }, nodes)
     }
 
     function RunCard(props) {
@@ -96,37 +172,149 @@ window.__ModuleLoader__.load({
       const run = props.run
       const requirement = requirementOf(run)
       const stage = stageOf(run)
+      const badge = badgeOf(run, stage)
       const docs = docsOf(run)
       const projects = Array.isArray(run.projects) ? run.projects : []
       const live = stage !== 'closed'
-      return h('div', { style: S.card },
-        h('div', { style: S.row, onClick: () => setOpen(!open) },
+      return h('div', { style: Object.assign({}, S.card, { opacity: live ? 1 : 0.72 }) },
+        h('div', { style: S.top, onClick: () => setOpen(!open) },
           h('span', { style: { opacity: 0.4, fontSize: 10 } }, open ? '\u25be' : '\u25b8'),
-          h('span', { style: { fontFamily: mono, fontSize: 12, opacity: 0.7 } }, requirement.id || run.id || '-'),
-          h('span', { style: { fontSize: 13, fontWeight: 600 } }, requirement.title || '(未命名需求)'),
-          h('span', { style: S.chip }, LABEL[stage] || stage),
-          h('span', { style: { marginLeft: 'auto', fontFamily: mono, fontSize: 11.5, opacity: 0.55 } }, run.branch || '')),
-        open ? h('div', { style: S.body },
+          h('span', { style: S.id }, requirement.id || run.id || '-'),
+          h('span', { style: S.title }, requirement.title || '(未命名需求)'),
+          h('span', { style: badgeStyle(badge.tone) }, badge.text),
+          h('span', { style: { marginLeft: 'auto', fontFamily: mono, fontSize: 11.5, opacity: 0.5 } }, run.branch || '')),
+        open ? h('div', null,
+          docs.length
+            ? h('div', { style: S.docs }, docs.map((doc, i) => doc.url
+                ? h('a', { key: i, href: doc.url, target: '_blank', rel: 'noreferrer', style: S.doc }, doc.label, ' ', h('span', { style: S.docKind }, doc.kind))
+                : h('span', { key: i, style: Object.assign({}, S.doc, { opacity: 0.7 }) }, doc.label, ' ', h('span', { style: S.docKind }, doc.kind))))
+            : null,
           h('div', { style: S.meta },
             h('span', null, '项目 ', h('code', { style: S.code }, projects.join(', ') || '-')),
             h('span', null, '分支 ', h('code', { style: S.code }, run.branch || '-')),
-            h('span', null, '环境 ', h('code', { style: S.code }, run.env || '-'))),
-          docs.length
-            ? h('div', { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 } },
-                docs.map((doc, i) => doc.url
-                  ? h('a', { key: i, href: doc.url, target: '_blank', rel: 'noreferrer', style: Object.assign({ textDecoration: 'none', color: 'inherit' }, S.chip) }, doc.label)
-                  : h('span', { key: i, style: Object.assign({ opacity: 0.6 }, S.chip) }, doc.label)))
-            : h('div', { style: { fontSize: 11.5, opacity: 0.45, marginBottom: 8 } }, '还没有关联文档'),
-          live ? h('div', { style: S.acts },
+            h('span', null, '环境 ', h('code', { style: S.code }, run.env || '-')),
+            stage === 'closed' && run.closedAt ? h('span', null, String(run.closedAt).slice(0, 10) + ' 手动标记完成') : null),
+          h(Timeline, { run: run, stage: stage }),
+          live ? h('div', { style: S.actions },
             OPS.map((name) => h('button', {
               key: name,
               style: Object.assign({}, S.sm, props.busy === name ? { opacity: 0.5 } : null),
               disabled: props.busy === name,
               onClick: () => props.onAction(name, run),
             }, props.busy === name ? '执行中…' : (LABEL[name] || name))),
-            h('span', { style: S.hint }, '流程未结束，可反复执行'),
-            h('button', { style: S.gh, onClick: () => props.onAction('close', run) }, '标记完成')) : null)
+            h('span', { style: S.hint }, '流程未结束：随时可重跑'),
+            h('button', { style: S.smGhost, onClick: () => props.onAction('close', run) }, '标记完成')) : null)
           : null)
+    }
+
+    function Step(props) {
+      return h('div', {
+        style: { display: 'flex', gap: 14, padding: '14px 0', borderTop: props.first ? 'none' : '1px solid ' + BORDER, paddingTop: props.first ? 0 : 14 },
+      },
+        h('div', {
+          style: {
+            flex: '0 0 22px', height: 22, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: 11,
+            background: props.on ? ACCENT : CHIP_BG, color: props.on ? PRIMARY_FG : 'inherit', opacity: props.on ? 1 : 0.7,
+          },
+        }, String(props.no)),
+        h('div', { style: { flex: 1, minWidth: 0 } },
+          h('div', { style: S.steplabel }, props.label),
+          props.children))
+    }
+
+    function docKindOf(url) {
+      const text = String(url || '')
+      if (!text) return ''
+      if (/sheets|\u8868\u683c/i.test(text)) return '用例文档'
+      if (/docx|docs|wiki|\u6587\u6863/i.test(text)) return '需求文档'
+      return '飞书链接'
+    }
+
+    function Wizard(props) {
+      const projectNames = props.projects.map((p) => p.name)
+      const [v, setV] = useState({
+        requirementId: '', title: '', docUrl: '', branch: '',
+        env: props.envs[0] || 'test', projects: projectNames,
+      })
+      const set = (key) => (e) => {
+        const next = Object.assign({}, v)
+        next[key] = e.target.value
+        setV(next)
+      }
+      const toggle = (name) => {
+        const has = v.projects.indexOf(name) >= 0
+        setV(Object.assign({}, v, { projects: has ? v.projects.filter((x) => x !== name) : v.projects.concat([name]) }))
+      }
+      const submit = () => {
+        const id = String(v.requirementId || '').trim()
+        const title = String(v.title || '').trim()
+        if (!id || !title) { props.onWarn('需求 ID 和标题都要填'); return }
+        if (!v.projects.length) { props.onWarn('至少选一个项目'); return }
+        const extra = { requirementId: id, title: title, env: v.env || 'test', projects: v.projects.slice() }
+        const doc = String(v.docUrl || '').trim()
+        const branch = String(v.branch || '').trim()
+        if (doc) extra.docUrl = doc
+        if (branch) extra.branch = branch
+        props.onSubmit(extra)
+      }
+      const kind = docKindOf(v.docUrl)
+      const selected = projectNames.filter((n) => v.projects.indexOf(n) >= 0)
+      return h('div', { style: S.wizard },
+        h('h2', { style: S.wizh2 }, '新建交付'),
+        h('p', { style: S.lead }, '填需求号 → 贴飞书文档 → 选项目 → 定分支，四步走完开始开发。'),
+        h(Step, { no: 1, label: '需求标识', on: true, first: true },
+          h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
+            h('input', {
+              style: Object.assign({}, S.input, { flex: '0 0 200px' }), value: v.requirementId,
+              placeholder: '需求 ID，如 TONGXI-142', onChange: set('requirementId'),
+            }),
+            h('input', {
+              style: Object.assign({}, S.input, { flex: 1, minWidth: 200 }), value: v.title,
+              placeholder: '一句话标题', onChange: set('title'),
+            })),
+          h('div', { style: S.note }, '需求 ID 会进入分支名和 run 目录，创建后不建议改。')),
+        h(Step, { no: 2, label: '飞书文档', on: v.title.trim().length > 0 },
+          h('div', { style: S.field },
+            h('span', { style: { opacity: 0.5 } }, '\ud83d\udd17'),
+            h('input', {
+              style: S.bare, value: v.docUrl, placeholder: '粘贴飞书需求文档链接',
+              onChange: set('docUrl'),
+            }),
+            kind ? h('span', { style: S.tag }, '识别为 ' + kind) : null),
+          h('div', { style: S.note }, '粘贴后自动识别类型；用例文档在 intake 阶段按需求文档拉取。')),
+        h(Step, { no: 3, label: '本地项目 · 分支', on: v.projects.length > 0 },
+          h('div', { style: S.field },
+            h('span', { style: { opacity: 0.5 } }, '\ud83d\udcc1'),
+            h('span', { style: Object.assign({}, S.fieldVal, { opacity: selected.length ? 1 : 0.45 }) },
+              selected.length ? selected.map((n) => n).join(' , ') : '未选择项目'),
+            h('span', { style: { opacity: 0.45, fontSize: 11 } }, String(selected.length) + ' / ' + String(projectNames.length))),
+          h('div', { style: Object.assign({}, S.inline, { marginBottom: 7 }) },
+            h('span', { style: { fontSize: 11, opacity: 0.5 } }, '最近：'),
+            projectNames.length
+              ? projectNames.map((name) => h('button', {
+                  key: name,
+                  style: v.projects.indexOf(name) >= 0 ? S.chipOn : S.chipOff,
+                  onClick: () => toggle(name),
+                }, name))
+              : h('span', { style: S.empty }, '配置里没有项目')),
+          h('div', { style: S.inline },
+            h('span', { style: { fontSize: 11, opacity: 0.5 } }, '基于'),
+            h('select', { style: S.select, value: v.env, onChange: set('env') },
+              (props.envs.length ? props.envs : ['test']).map((name) => h('option', { key: name, value: name }, name))),
+            h('span', { style: { fontSize: 11, opacity: 0.5 } }, '新建'),
+            h('input', {
+              style: Object.assign({}, S.input, { flex: 1, minWidth: 220, maxWidth: 340 }),
+              value: v.branch, placeholder: '留空按需求号 + 标题自动生成', onChange: set('branch'),
+            })),
+          h('div', { style: S.note }, '分支名由需求号 + 标题自动生成，可改。工作区有未提交改动时会拦下。')),
+        h(Step, { no: 4, label: '开始开发', on: false },
+          h('div', { style: Object.assign({}, S.note, { marginTop: 0, fontSize: 12 }) },
+            '创建后得到一条交付记录：可在卡片里反复跑验证 / 构建 / 部署，直到手动标记完成。'),
+          h('div', { style: S.wizfoot },
+            h('button', { style: Object.assign({}, S.primary, props.busy ? { opacity: 0.5 } : null), disabled: props.busy, onClick: submit },
+              props.busy ? '创建中…' : '创建交付记录'),
+            h('button', { style: S.ghost, onClick: props.onCancel }, '取消'),
+            h('span', { style: S.hint }, '创建后可立即跑验证'))))
     }
 
     function Panel() {
@@ -134,7 +322,6 @@ window.__ModuleLoader__.load({
       const [note, setNote] = useState(null)
       const [busy, setBusy] = useState('')
       const [creating, setCreating] = useState(false)
-      const [form, setForm] = useState({ requirementId: '', title: '', docUrl: '', branch: '', env: '', projects: [] })
 
       const load = useCallback(() => {
         setState((prev) => Object.assign({}, prev, { status: 'loading' }))
@@ -146,25 +333,12 @@ window.__ModuleLoader__.load({
 
       useEffect(() => { load() }, [load])
 
-      // Seed the form from config once it arrives, without clobbering typing.
-      useEffect(() => {
-        const data = state.data
-        if (!data || !data.config) return
-        const names = (data.config.projects || []).map((p) => p.name)
-        const envs = data.config.envs || []
-        setForm((prev) => {
-          if (prev.projects.length || prev.env) return prev
-          return Object.assign({}, prev, { projects: names, env: envs[0] || 'test' })
-        })
-      }, [state.data])
-
       const post = useCallback((action, extra) => {
         setBusy(action)
-        const args = Object.assign({ workspace: WORKSPACE }, extra || {})
         return fetch('/delivery/api/action', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ action: action, args: args }),
+          body: JSON.stringify({ action: action, args: Object.assign({ workspace: WORKSPACE }, extra || {}) }),
         })
           .then((r) => r.json().then((b) => ({ ok: r.ok, body: b })))
           .then((res) => {
@@ -173,8 +347,7 @@ window.__ModuleLoader__.load({
             if (failed) {
               setNote({ kind: 'error', text: err ? ((err.code || 'ERROR') + ' · ' + (err.message || '')) : '执行失败' })
             } else {
-              const summary = String((res.body && res.body.summary) || '已完成')
-              setNote({ kind: 'ok', text: summary.split('\n')[0] })
+              setNote({ kind: 'ok', text: String((res.body && res.body.summary) || '已完成').split('\n')[0] })
             }
             load()
             return !failed
@@ -188,36 +361,6 @@ window.__ModuleLoader__.load({
 
       const onAction = (action, run) => post(action, { run: run.id })
 
-      const toggleProject = (name) => setForm((prev) => {
-        const has = prev.projects.indexOf(name) >= 0
-        return Object.assign({}, prev, {
-          projects: has ? prev.projects.filter((x) => x !== name) : prev.projects.concat([name]),
-        })
-      })
-
-      const submitNew = () => {
-        const requirementId = String(form.requirementId || '').trim()
-        const title = String(form.title || '').trim()
-        if (!requirementId || !title) {
-          setNote({ kind: 'error', text: '需求 ID 和标题都要填' })
-          return
-        }
-        if (!form.projects.length) {
-          setNote({ kind: 'error', text: '至少选一个项目' })
-          return
-        }
-        const extra = { requirementId: requirementId, title: title, env: form.env || 'test', projects: form.projects.slice() }
-        const docUrl = String(form.docUrl || '').trim()
-        const branch = String(form.branch || '').trim()
-        if (docUrl) extra.docUrl = docUrl
-        if (branch) extra.branch = branch
-        post('new', extra).then((ok) => {
-          if (!ok) return
-          setCreating(false)
-          setForm((prev) => Object.assign({}, prev, { requirementId: '', title: '', docUrl: '', branch: '' }))
-        })
-      }
-
       const data = state.data || {}
       const projects = (data.config && Array.isArray(data.config.projects)) ? data.config.projects : []
       const envs = (data.config && Array.isArray(data.config.envs)) ? data.config.envs : []
@@ -228,68 +371,47 @@ window.__ModuleLoader__.load({
       const loading = state.status === 'loading'
       const name = String(WORKSPACE).split('/').pop()
 
-      const formNode = h('div', { style: Object.assign({}, S.card, { marginBottom: 14 }) },
-        h('div', { style: { fontSize: 12, opacity: 0.6, marginBottom: 12 } }, '填需求信息，创建一条交付记录'),
-        field('需求 ID', h('input', {
-          style: S.input, value: form.requirementId, placeholder: 'REQ-1234',
-          onChange: (e) => setForm(Object.assign({}, form, { requirementId: e.target.value })),
-        })),
-        field('标题', h('input', {
-          style: S.input, value: form.title, placeholder: '一句话说明这次改什么',
-          onChange: (e) => setForm(Object.assign({}, form, { title: e.target.value })),
-        })),
-        field('飞书文档链接（可选）', h('input', {
-          style: S.input, value: form.docUrl, placeholder: 'https://xxx.feishu.cn/docx/...',
-          onChange: (e) => setForm(Object.assign({}, form, { docUrl: e.target.value })),
-        })),
-        field('项目', h('div', { style: { display: 'flex', gap: 14, flexWrap: 'wrap', paddingTop: 2 } },
-          projects.length
-            ? projects.map((p) => h('label', { key: p.name, style: { display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer' } },
-                h('input', { type: 'checkbox', checked: form.projects.indexOf(p.name) >= 0, onChange: () => toggleProject(p.name) }),
-                p.name))
-            : h('span', { style: { fontSize: 12, opacity: 0.5 } }, '配置里没有项目'))),
-        field('环境', h('select', {
-          style: S.input, value: form.env,
-          onChange: (e) => setForm(Object.assign({}, form, { env: e.target.value })),
-        }, (envs.length ? envs : ['test']).map((v) => h('option', { key: v, value: v }, v)))),
-        field('分支（可选，留空自动生成）', h('input', {
-          style: S.input, value: form.branch, placeholder: 'feat/...',
-          onChange: (e) => setForm(Object.assign({}, form, { branch: e.target.value })),
-        })),
-        h('div', { style: { display: 'flex', gap: 8, marginTop: 2 } },
-          h('button', { style: S.btn, disabled: busy === 'new', onClick: submitNew }, busy === 'new' ? '创建中…' : '创建'),
-          h('button', { style: S.gh, onClick: () => setCreating(false) }, '取消')))
-
-      return h('div', { style: S.main },
-        h('div', { style: S.bar },
-          h('h1', { style: S.h1 }, '交付流程'),
-          h('span', { style: S.sub }, name + (projects.length ? ' · ' + projects.map((p) => p.name).join(' / ') : ' · 无项目')),
-          h('span', { style: { flex: 1 } }),
-          h('button', { style: S.btn, onClick: () => setCreating(!creating) }, creating ? '收起' : '新建需求'),
-          h('button', { style: S.btn, onClick: load, disabled: loading }, loading ? '加载中…' : '刷新')),
-        note ? h('div', {
-          style: {
-            fontSize: 12, padding: '8px 11px', borderRadius: 7, marginBottom: 12,
-            border: note.kind === 'error' ? '1px solid rgba(220,38,38,.4)' : SUBTLE,
-            background: note.kind === 'error' ? 'rgba(220,38,38,.08)' : 'transparent',
-          },
-        }, note.text) : null,
-        creating ? formNode : null,
-        h('div', { style: S.lb }, '环境'),
-        h('div', { style: S.card },
+      return h('div', { style: S.wrap },
+        h('div', { style: S.page },
+          h('div', { style: S.head },
+            h('h1', { style: S.h1 }, '交付流程'),
+            h('span', { style: S.sub }, '需求 → 开发 → 验证 → 构建 → 部署'),
+            h('span', { style: S.spacer }),
+            h('span', { style: S.ws }, '工作区 · ' + name),
+            h('button', { style: Object.assign({}, S.primary, loading ? { opacity: 0.6 } : null), onClick: () => setCreating(!creating) },
+              creating ? '收起向导' : '+ 新建需求')),
+          note ? h('div', {
+            style: {
+              fontSize: 12, padding: '9px 12px', borderRadius: 8, marginBottom: 12,
+              border: '1px solid ' + (note.kind === 'error' ? 'rgba(220,38,38,.45)' : BORDER),
+              background: note.kind === 'error' ? 'rgba(220,38,38,.08)' : 'transparent',
+              opacity: note.kind === 'error' ? 1 : 0.72,
+            },
+          }, note.text) : null,
+          creating ? h(Wizard, {
+            projects: projects,
+            envs: envs,
+            busy: busy === 'new',
+            onWarn: (text) => setNote({ kind: 'error', text: text }),
+            onCancel: () => setCreating(false),
+            onSubmit: (extra) => post('new', extra).then((ok) => {
+              if (ok) setCreating(false)
+            }),
+          }) : null,
+          h('div', { style: S.sectionhead }, '进行中 ', h('span', { style: S.count }, String(active.length))),
+          active.length
+            ? active.map((r) => h(RunCard, { key: r.id, run: r, onAction: onAction, busy: busy }))
+            : h('div', { style: S.empty }, loading ? '加载中…' : '还没有进行中的交付。点右上角「+ 新建需求」。'),
+          done.length ? h('div', null,
+            h('div', { style: S.sectionhead }, '已完成 ', h('span', { style: S.count }, String(done.length))),
+            done.map((r) => h(RunCard, { key: r.id, run: r, onAction: onAction, busy: '' }))) : null,
+          h('div', { style: S.sectionhead }, '环境', h('span', { style: S.count }, state.error ? '接口异常' : '')),
           checks.length
-            ? checks.map((c) => h('div', { key: c.name, style: { display: 'flex', gap: 10, fontSize: 12, padding: '2px 0' } },
-                h('span', { style: { width: 12, opacity: 0.9 } }, c.status === 'ok' ? '\u2713' : '!'),
-                h('span', { style: { minWidth: 140, opacity: 0.72 } }, c.name),
-                h('span', { style: { opacity: 0.5, wordBreak: 'break-all' } }, c.detail || '')))
-            : h('div', { style: S.empty }, loading ? '加载中…' : (state.error || '数据接口未接通'))),
-        h('div', { style: S.lb }, '进行中'),
-        active.length
-          ? active.map((r) => h(RunCard, { key: r.id, run: r, onAction: onAction, busy: busy }))
-          : h('div', { style: S.empty }, '还没有进行中的交付。点右上角「新建需求」开始。'),
-        done.length ? h('div', null,
-          h('div', { style: S.lb }, '已完成'),
-          done.map((r) => h(RunCard, { key: r.id, run: r, onAction: onAction, busy: '' }))) : null)
+            ? checks.map((c) => h('div', { key: c.name, style: { display: 'flex', gap: 10, fontSize: 12, padding: '2px 0', opacity: 0.72 } },
+                h('span', { style: { width: 12, color: c.status === 'ok' ? OK : 'inherit' } }, c.status === 'ok' ? '\u2713' : '!'),
+                h('span', { style: { minWidth: 140, opacity: 0.8 } }, c.name),
+                h('span', { style: { opacity: 0.66, wordBreak: 'break-all' } }, c.detail || '')))
+            : h('div', { style: S.empty }, loading ? '加载中…' : (state.error || '数据接口未接通'))))
     }
 
     function RailIcon() {
