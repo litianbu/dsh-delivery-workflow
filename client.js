@@ -9,11 +9,14 @@ window.__ModuleLoader__.load({
     const { useState, useEffect, useCallback } = React
 
     const WORKSPACE = '/Users/runzhili/Desktop/biomap-delivery'
-    // Only two alias tokens are guaranteed to exist in this shell; everything
-    // else is a concrete colour that works in both light and dark themes.
+    // Only the brand tokens below are guaranteed to exist in this shell;
+    // everything else is a concrete colour that works in light and dark themes.
     const ACCENT = 'var(--dsw-alias-brand-primary, #2563eb)'
     const PRIMARY_BG = 'var(--dsw-alias-button-primary-fill, #2563eb)'
-    const PRIMARY_FG = 'var(--dsw-alias-brand-primary-invert, #ffffff)'
+    // brand-primary-invert is NOT "text on brand": in this theme it resolves to
+    // the same dark neutral as the fill, which made the label invisible on the
+    // button. bg-base is the page background, so it always inverts the fill.
+    const PRIMARY_FG = 'var(--dsw-alias-bg-base, #ffffff)'
     const BORDER = 'rgba(127,127,127,.22)'
     const STRONG = 'rgba(127,127,127,.38)'
     const CHIP_BG = 'rgba(127,127,127,.12)'
@@ -21,7 +24,7 @@ window.__ModuleLoader__.load({
     const OK = '#16a34a'
     const OK_BG = 'rgba(22,163,74,.10)'
     const OK_BD = 'rgba(22,163,74,.40)'
-    const ACCENT_BG = 'rgba(37,99,235,.10)'
+    const ACCENT_BG = 'rgba(127,127,127,.14)'
     const mono = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
     const LABEL = {
@@ -83,7 +86,6 @@ window.__ModuleLoader__.load({
       wizfoot: { display: 'flex', gap: 8, alignItems: 'center', paddingTop: 16 },
       chipOn: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, border: '1px solid ' + ACCENT, color: ACCENT, background: ACCENT_BG, borderRadius: 7, padding: '5px 10px', cursor: 'pointer' },
       chipOff: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.55, border: '1px solid ' + BORDER, background: 'transparent', borderRadius: 7, padding: '5px 10px', cursor: 'pointer' },
-      select: { font: 'inherit', fontSize: 12, border: '1px solid ' + BORDER, borderRadius: 7, padding: '5px 10px', background: 'transparent', color: 'inherit' },
     }
 
     function isClosed(run) {
@@ -265,7 +267,7 @@ window.__ModuleLoader__.load({
         h(Step, { no: 1, label: '需求标识', on: true, first: true },
           h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
             h('input', {
-              style: Object.assign({}, S.input, { flex: '0 0 200px' }), value: v.requirementId,
+              style: Object.assign({}, S.input, { flex: '0 0 200px', width: 'auto' }), value: v.requirementId,
               placeholder: '需求 ID，如 TONGXI-142', onChange: set('requirementId'),
             }),
             h('input', {
@@ -273,7 +275,7 @@ window.__ModuleLoader__.load({
               placeholder: '一句话标题', onChange: set('title'),
             })),
           h('div', { style: S.note }, '需求 ID 会进入分支名和 run 目录，创建后不建议改。')),
-        h(Step, { no: 2, label: '飞书文档', on: v.title.trim().length > 0 },
+        h(Step, { no: 2, label: '飞书文档', on: true },
           h('div', { style: S.field },
             h('span', { style: { opacity: 0.5 } }, '\ud83d\udd17'),
             h('input', {
@@ -282,11 +284,11 @@ window.__ModuleLoader__.load({
             }),
             kind ? h('span', { style: S.tag }, '识别为 ' + kind) : null),
           h('div', { style: S.note }, '粘贴后自动识别类型；用例文档在 intake 阶段按需求文档拉取。')),
-        h(Step, { no: 3, label: '本地项目 · 分支', on: v.projects.length > 0 },
+        h(Step, { no: 3, label: '本地项目 · 分支', on: true },
           h('div', { style: S.field },
             h('span', { style: { opacity: 0.5 } }, '\ud83d\udcc1'),
             h('span', { style: Object.assign({}, S.fieldVal, { opacity: selected.length ? 1 : 0.45 }) },
-              selected.length ? selected.map((n) => n).join(' , ') : '未选择项目'),
+              selected.length ? selected.join(' , ') : '未选择项目'),
             h('span', { style: { opacity: 0.45, fontSize: 11 } }, String(selected.length) + ' / ' + String(projectNames.length))),
           h('div', { style: Object.assign({}, S.inline, { marginBottom: 7 }) },
             h('span', { style: { fontSize: 11, opacity: 0.5 } }, '最近：'),
@@ -299,15 +301,18 @@ window.__ModuleLoader__.load({
               : h('span', { style: S.empty }, '配置里没有项目')),
           h('div', { style: S.inline },
             h('span', { style: { fontSize: 11, opacity: 0.5 } }, '基于'),
-            h('select', { style: S.select, value: v.env, onChange: set('env') },
-              (props.envs.length ? props.envs : ['test']).map((name) => h('option', { key: name, value: name }, name))),
+            (props.envs.length ? props.envs : ['test', 'prod']).map((enc) => h('button', {
+              key: enc,
+              style: v.env === enc ? S.chipOn : S.chipOff,
+              onClick: () => setV(Object.assign({}, v, { env: enc })),
+            }, enc)),
             h('span', { style: { fontSize: 11, opacity: 0.5 } }, '新建'),
             h('input', {
               style: Object.assign({}, S.input, { flex: 1, minWidth: 220, maxWidth: 340 }),
               value: v.branch, placeholder: '留空按需求号 + 标题自动生成', onChange: set('branch'),
             })),
           h('div', { style: S.note }, '分支名由需求号 + 标题自动生成，可改。工作区有未提交改动时会拦下。')),
-        h(Step, { no: 4, label: '开始开发', on: false },
+        h(Step, { no: 4, label: '开始开发', on: true },
           h('div', { style: Object.assign({}, S.note, { marginTop: 0, fontSize: 12 }) },
             '创建后得到一条交付记录：可在卡片里反复跑验证 / 构建 / 部署，直到手动标记完成。'),
           h('div', { style: S.wizfoot },
@@ -378,7 +383,7 @@ window.__ModuleLoader__.load({
             h('span', { style: S.sub }, '需求 → 开发 → 验证 → 构建 → 部署'),
             h('span', { style: S.spacer }),
             h('span', { style: S.ws }, '工作区 · ' + name),
-            h('button', { style: Object.assign({}, S.primary, loading ? { opacity: 0.6 } : null), onClick: () => setCreating(!creating) },
+            h('button', { style: S.primary, onClick: () => setCreating(!creating) },
               creating ? '收起向导' : '+ 新建需求')),
           note ? h('div', {
             style: {
