@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>交付流程 · 页面设计稿</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff; --fg: #17181a; --muted: #6b7280; --faint: #9ca3af;
+    --border: rgba(0,0,0,0.10); --border-strong: rgba(0,0,0,0.16);
+    --card: #fbfbfc; --rail: #f5f5f7;
+    --accent: #2563eb; --accent-soft: rgba(37,99,235,0.10);
+    --ok: #16a34a; --warn: #d97706; --danger: #dc2626; --chip: rgba(0,0,0,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101113; --fg: #e7e7e8; --muted: #9ca3af; --faint: #6b7280;
+      --border: rgba(255,255,255,0.12); --border-strong: rgba(255,255,255,0.2);
+      --card: #16181b; --rail: #0b0c0e;
+      --accent: #6ea0f8; --accent-soft: rgba(110,160,248,0.16);
+      --ok: #4ade80; --warn: #fbbf24; --danger: #f87171; --chip: rgba(255,255,255,0.07);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    display: flex;
+  }
+  .rail { width: 56px; flex: 0 0 56px; background: var(--rail);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    align-items: center; gap: 14px; padding: 16px 0; }
+  .rail .dot { width: 30px; height: 30px; border-radius: 8px; background: var(--chip);
+    display: grid; place-items: center; color: var(--faint); }
+  .rail .dot.active { background: var(--accent-soft); color: var(--accent); }
+  .rail .dot svg { width: 17px; height: 17px; }
+  main { flex: 1; overflow: auto; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 26px 32px 80px; }
+  .pagehead { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .pagehead h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  .pagehead .sub { color: var(--faint); font-size: 12px; }
+  .spacer { flex: 1; }
+  .ws { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+    color: var(--muted); border: 1px solid var(--border); border-radius: 7px;
+    padding: 5px 10px; background: var(--card); cursor: pointer; }
+  .btn { font: inherit; font-size: 12px; padding: 6px 13px; border-radius: 7px;
+    border: 1px solid var(--border-strong); background: var(--card); color: var(--fg);
+    cursor: pointer; white-space: nowrap; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+  .btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+  .btn.sm { padding: 4px 10px; font-size: 12px; }
+  .sectionhead { display: flex; align-items: center; gap: 8px; margin: 26px 0 10px;
+    font-size: 12px; color: var(--muted); }
+  .sectionhead .count { color: var(--faint); }
+  .card { border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+    padding: 15px 17px; margin-bottom: 12px; }
+  .card .top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); }
+  .title { font-size: 14px; font-weight: 600; }
+  .badge { font-size: 11px; padding: 1px 8px; border-radius: 999px;
+    border: 1px solid var(--border-strong); color: var(--muted); }
+  .badge.live { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: var(--accent-soft); }
+  .badge.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+  .meta { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 9px; color: var(--muted); font-size: 12px; }
+  .meta code { font-family: ui-monospace, Menlo, monospace; background: var(--chip);
+    padding: 1px 6px; border-radius: 5px; color: var(--fg); }
+  .docs { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+  .doc { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+    padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--fg); text-decoration: none; }
+  .doc .kind { color: var(--faint); font-size: 11px; }
+  .phases { display: flex; align-items: center; margin: 14px 0 12px; flex-wrap: wrap; }
+  .ph { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--faint); }
+  .ph .mark { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 10px; border: 1px solid var(--border-strong); color: var(--faint); }
+  .ph.done { color: var(--muted); }
+  .ph.done .mark { border-color: color-mix(in srgb, var(--ok) 55%, transparent); color: var(--ok); }
+  .ph.now { color: var(--fg); font-weight: 500; }
+  .ph.now .mark { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .bar { width: 18px; height: 1px; background: var(--border-strong); margin: 0 9px; }
+  .actions { display: flex; gap: 7px; flex-wrap: wrap; padding-top: 12px;
+    border-top: 1px solid var(--border); }
+  .hint { font-size: 12px; color: var(--faint); margin-left: auto; align-self: center; }
+  .wizard { border: 1px solid var(--border-strong); border-radius: 12px; padding: 20px 22px;
+    background: var(--card); }
+  .wizard h2 { font-size: 14px; margin: 0 0 4px; }
+  .wizard .lead { color: var(--muted); font-size: 12px; margin: 0 0 18px; }
+  .step { display: flex; gap: 14px; padding: 14px 0; border-top: 1px solid var(--border); }
+  .step:first-of-type { border-top: 0; padding-top: 0; }
+  .stepno { flex: 0 0 22px; height: 22px; border-radius: 50%; background: var(--chip);
+    color: var(--muted); display: grid; place-items: center; font-size: 11px; }
+  .stepno.on { background: var(--accent); color: #fff; }
+  .stepbody { flex: 1; min-width: 0; }
+  .steplabel { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+  .field { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-strong);
+    border-radius: 7px; padding: 7px 10px; background: var(--bg); font-size: 12px;
+    color: var(--faint); margin-bottom: 7px; }
+  .field .val { color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .field .tag { margin-left: auto; flex: 0 0 auto; font-size: 11px; padding: 1px 8px;
+    border-radius: 999px; color: var(--ok);
+    border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent);
+    background: color-mix(in srgb, var(--ok) 10%, transparent); }
+  .inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .note { font-size: 11px; color: var(--faint); margin-top: 6px; }
+  .wizfoot { display: flex; gap: 8px; align-items: center; padding-top: 16px; }
+  .toast { margin-top: 26px; padding: 12px 14px; border-radius: 9px;
+    border: 1px dashed var(--border-strong); color: var(--muted); font-size: 12px; background: var(--bg); }
+  .toast b { color: var(--fg); font-weight: 600; }
+</style>
+</head>
+<body>
+  <nav class="rail" aria-hidden="true">
+    <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="3"/></svg></div>
+    <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+    <div class="dot active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h9M4 12h13M4 17h7"/><circle cx="18.5" cy="7" r="2.1"/><circle cx="20" cy="17" r="1.6"/></svg></div>
+    <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/></svg></div>
+  </nav>
+
+  <main>
+    <div class="wrap">
+      <div class="pagehead">
+        <h1>交付流程</h1>
+        <span class="sub">需求 → 开发 → 验证 → 构建 → 部署</span>
+        <span class="spacer"></span>
+        <span class="ws">工作区·biomap-delivery ▾</span>
+        <button class="btn primary">+ 新建需求</button>
+      </div>
+
+      <div class="sectionhead">进行中 <span class="count">2</span></div>
+
+      <div class="card">
+        <div class="top">
+          <span class="id">TONGXI-142</span>
+          <span class="title">智能问答引用溯源</span>
+          <span class="badge live">开发中</span>
+        </div>
+        <div class="docs">
+          <a class="doc" href="#">需求文档 <span class="kind">飞书</span></a>
+          <a class="doc" href="#">用例文档 <span class="kind">飞书 · 12 条</span></a>
+        </div>
+        <div class="meta">
+          <span>项目 <code>tongxi-biomap</code></span>
+          <span>分支 <code>feat/tongxi-142-citation</code></span>
+          <span>会话 <a href="#" style="color:var(--accent);text-decoration:none">打开</a></span>
+        </div>
+        <div class="phases">
+          <span class="ph done"><span class="mark">✓</span>需求</span><span class="bar"></span>
+          <span class="ph now"><span class="mark">●</span>开发</span><span class="bar"></span>
+          <span class="ph"><span class="mark">○</span>验证</span><span class="bar"></span>
+          <span class="ph"><span class="mark">○</span>构建</span><span class="bar"></span>
+          <span class="ph"><span class="mark">○</span>部署</span>
+        </div>
+        <div class="actions">
+          <button class="btn sm primary">打开开发会话</button>
+          <button class="btn sm">验证</button>
+          <button class="btn sm">构建</button>
+          <button class="btn sm">部署</button>
+          <span class="hint">流程未结束：随时可重跑</span>
+          <button class="btn sm ghost">标记完成</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="top">
+          <span class="id">TONGXI-138</span>
+          <span class="title">样本列表批量导出</span>
+          <span class="badge ok">已部署 test</span>
+        </div>
+        <div class="docs">
+          <a class="doc" href="#">需求文档 <span class="kind">飞书</span></a>
+          <a class="doc" href="#">用例文档 <span class="kind">飞书 · 7 条</span></a>
+        </div>
+        <div class="meta">
+          <span>项目 <code>tongxi-biomap</code></span>
+          <span>分支 <code>feat/tongxi-138-export</code></span>
+          <span>镜像 <code>test-a1b2c3d4e5f6-17</code></span>
+        </div>
+        <div class="phases">
+          <span class="ph done"><span class="mark">✓</span>需求</span><span class="bar"></span>
+          <span class="ph done"><span class="mark">✓</span>开发</span><span class="bar"></span>
+          <span class="ph done"><span class="mark">✓</span>验证</span><span class="bar"></span>
+          <span class="ph done"><span class="mark">✓</span>构建</span><span class="bar"></span>
+          <span class="ph done"><span class="mark">✓</span>部署</span>
+        </div>
+        <div class="actions">
+          <button class="btn sm">验证</button>
+          <button class="btn sm">构建</button>
+          <button class="btn sm">部署 test</button>
+          <button class="btn sm">部署 prod</button>
+          <span class="hint">健康检查通过 · 可继续迭代</span>
+          <button class="btn sm ghost">标记完成</button>
+        </div>
+      </div>
+
+      <div class="sectionhead">新建需求 · 点「+ 新建需求」后的向导</div>
+      <div class="wizard">
+        <h2>新建交付</h2>
+        <p class="lead">粘贴飞书文档 → 选项目 → 建分支 → 开会话，四步走完开始开发。</p>
+
+        <div class="step">
+          <div class="stepno on">1</div>
+          <div class="stepbody">
+            <div class="steplabel">飞书文档</div>
+            <div class="field">
+              <span>🔗</span>
+              <span class="val">https://biomap.feishu.cn/docx/Xk2pQ…</span>
+              <span class="tag">识别为 需求文档</span>
+            </div>
+            <div class="field">
+              <span>🔗</span>
+              <span class="val">https://biomap.feishu.cn/sheets/Sheet7…</span>
+              <span class="tag">识别为 用例文档 · 12 条</span>
+            </div>
+            <div class="note">粘贴后自动识别类型；识别错了点标签即可改。</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="stepno on">2</div>
+          <div class="stepbody">
+            <div class="steplabel">本地项目</div>
+            <div class="field">
+              <span>📁</span>
+              <span class="val">/Users/runzhili/Desktop/biomap/tongxi-biomap</span>
+              <span style="margin-left:auto"><button class="btn sm">选择…</button></span>
+            </div>
+            <div class="inline">
+              <span class="note" style="margin:0">最近：</span>
+              <button class="btn sm ghost">tongxi-biomap</button>
+              <button class="btn sm ghost">smart-assistant-web</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="stepno on">3</div>
+          <div class="stepbody">
+            <div class="steplabel">分支</div>
+            <div class="inline">
+              <span class="note" style="margin:0">基于</span>
+              <span class="ws">test ▾</span>
+              <span class="note" style="margin:0">新建</span>
+              <code style="font-family:ui-monospace,Menlo,monospace;background:var(--chip);padding:3px 8px;border-radius:6px">feat/tongxi-142-citation</code>
+            </div>
+            <div class="note">分支名由需求号 + 标题自动生成，可改。工作区有未提交改动时会拦下。</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="stepno on">4</div>
+          <div class="stepbody">
+            <div class="steplabel">开始开发</div>
+            <div class="note" style="margin:0">
+              创建分支后新开一个会话，把需求文档 + 用例 + 项目路径 + 分支写成初始任务交给它。
+            </div>
+          </div>
+        </div>
+
+        <div class="wizfoot">
+          <button class="btn primary">创建分支并新建会话</button>
+          <button class="btn ghost">取消</button>
+          <span class="hint">会话出现在左侧对话列表，与本交付绑定</span>
+        </div>
+      </div>
+
+      <div class="sectionhead">已完成 <span class="count">3</span> <span style="color:var(--faint)">· 展开</span></div>
+      <div class="card" style="opacity:.72">
+        <div class="top">
+          <span class="id">TONGXI-127</span>
+          <span class="title">登录页改版</span>
+          <span class="badge">已归档</span>
+        </div>
+        <div class="meta">
+          <span>2026-10-21 手动标记完成</span>
+          <span>部署 prod · 健康检查通过</span>
+        </div>
+      </div>
+
+      <div class="toast">
+        <b>这是静态设计稿</b>，用来对齐版式和交互，不代表已实现。真实页面的数据、飞书文档识别、建分支、开会话都要接 Host 侧接口。<br />
+        要改哪里直接说：卡片信息密度、阶段划分、向导步骤、按钮位置都可以调。
+      </div>
+    </div>
+  </main>
+</body>
+</html>

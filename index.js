@@ -1,4 +1,5 @@
 import { actions } from './lib/actions.js'
+import { mountDeliveryApi } from './lib/api.js'
 import { PHASES } from './lib/run.js'
 import { limitText, redact } from './lib/util.js'
 
@@ -189,4 +190,11 @@ export function apply(ctx) {
     },
   })
   ctx.logger?.info?.('delivery-workflow: registered the delivery tool')
+
+  // Optional service: the Web page talks over HTTP. A CLI-only profile has no
+  // web server, so the routes are skipped there instead of blocking activation.
+  ctx.inject(['webServer'], (hostCtx) => {
+    hostCtx.effect(() => mountDeliveryApi(hostCtx))
+    hostCtx.logger?.info?.('delivery-workflow: mounted the /delivery routes')
+  })
 }

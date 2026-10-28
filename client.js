@@ -5,6 +5,9 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
+
+    // Workspace holding .delivery/config.json. The Host route requires it.
+    const WORKSPACE = '/Users/runzhili/Desktop/biomap-delivery'
     const { useState, useEffect, useCallback } = React
 
     const t = {
@@ -98,7 +101,7 @@ window.__ModuleLoader__.load({
 
       const load = useCallback(() => {
         setState((s) => ({ ...s, status: 'loading' }))
-        const url = '/delivery/api/state'
+        const url = '/delivery/api/state?workspace=' + encodeURIComponent(WORKSPACE)
         Promise.resolve()
           .then(() => fetch(url, { headers: { accept: 'application/json' } }))
           .then((res) => {
