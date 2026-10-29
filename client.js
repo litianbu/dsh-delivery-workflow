@@ -448,6 +448,26 @@ const PENDING_BUILDS = new Set()
       })()
       const chooseProject = (name) => setV(Object.assign({}, v, { project: name, pickedPath: '', base: '' }))
 
+      // A Jenkins job name belongs to the project, not to one requirement, so a
+      // project switch carries its job into the field instead of leaving it
+      // empty. Whatever the user typed is never overwritten: `autoJob` remembers
+      // the value this effect filled in, and only that one is replaced.
+      const autoJob = useRef({ value: '' })
+      const configuredJob = (name, env) => {
+        const entry = (props.projects || []).find((p) => p.name === name) || {}
+        const map = entry.jenkins && typeof entry.jenkins === 'object' ? entry.jenkins : {}
+        const value = map[env]
+        if (typeof value === 'string') return value
+        return String((value && value.job) || '')
+      }
+      useEffect(() => {
+        const typed = String(v.jenkinsJob || '').trim()
+        const untouched = !typed || v.jenkinsJob === autoJob.current.value
+        const next = configuredJob(projectName, v.env)
+        autoJob.current = { value: next }
+        if (untouched && next !== v.jenkinsJob) setV(Object.assign({}, v, { jenkinsJob: next }))
+      }, [projectName, v.env])
+
       useEffect(() => {
         if (!projectName) {
           setBr({ status: 'idle', local: [], current: '', blocking: [], defaultBase: '', error: null })
@@ -673,10 +693,13 @@ const PENDING_BUILDS = new Set()
             h('span', { style: { opacity: 0.5 } }, 'Jenkins'),
             h('input', {
               style: S.bare, value: v.jenkinsJob,
-              placeholder: (props.projects.find((p) => p.name === projectName) || {}).jenkins || 'Jenkins job 名，如 tongxi-test（可留空）',
+              placeholder: 'Jenkins job 名，如 tongxi-test（可留空）',
               onChange: set('jenkinsJob'),
             })),
-          h('div', { style: S.note }, '每个项目的 Jenkins job 名都不一样。留空则用 config.json 里该项目的配置；填了就只对这个需求生效。'),
+          h('div', { style: S.note },
+            configuredJob(projectName, v.env)
+              ? '已按项目 ' + projectName + ' 记录：' + configuredJob(projectName, v.env) + '。改了会写回 config.json，下次自动带出。'
+              : '每个项目的 Jenkins job 名都不一样。这里填了会按项目名 + 环境记进 config.json，下次新建自动带出。'),
           h('div', { style: S.wizfoot },
             h('button', { style: Object.assign({}, S.primary, props.busy ? { opacity: 0.5 } : null), disabled: props.busy, onClick: submit },
               props.busy ? '创建中…' : '创建分支并新建会话'),
