@@ -9,9 +9,9 @@ window.__ModuleLoader__.load({
     const { useState, useEffect, useCallback, useRef } = React
 
     const WORKSPACE = '/Users/runzhili/Desktop/biomap-delivery'
-    // Captured at apply() time. The shell owns navigation, so a created
-    // delivery hands the new conversation to uiWorkspace.openSession instead of
-    // guessing a URL.
+    // Captured at apply() time so a run card can open an existing delivery
+    // conversation through uiWorkspace.openSession. Creating a delivery stays on
+    // this page; navigation is always an explicit click.
     let uiContext = null
     // Only the brand tokens below are guaranteed to exist in this shell;
     // everything else is a concrete colour that works in light and dark themes.
@@ -674,7 +674,7 @@ const PENDING_BUILDS = new Set()
             h('button', { style: Object.assign({}, S.primary, props.busy ? { opacity: 0.5 } : null), disabled: props.busy, onClick: submit },
               props.busy ? '创建中…' : '创建分支并新建会话'),
             h('button', { style: S.ghost, onClick: props.onCancel }, '取消'),
-            h('span', { style: S.hint }, '创建后可立即跑验证'))))
+            h('span', { style: S.hint }, '保存后留在本页；需要开发时点交付卡片上的「打开开发会话」'))))
     }
 
     function Panel() {
@@ -758,32 +758,22 @@ const PENDING_BUILDS = new Set()
               setNote({ kind: 'error', text: failureText(res.body) })
             } else {
               setNote({ kind: 'ok', text: String((res.body && res.body.summary) || '已完成') })
-              // Only `new` opens a conversation. remove/close/verify return no
-              // session id, and claiming they "failed to open a session" turns a
-              // successful delete into an error message.
+              // `new` returns a session id once the delivery conversation exists. A
+              // missing id means the record was created without one, which is
+              // worth surfacing instead of silently showing a run card.
               const created = action === 'new' ? (res.body && res.body.data && res.body.data.sessionId) : null
-              // Creating a delivery is not the same as opening its conversation.
-              // Report why the jump did not happen instead of leaving the page looking
-              // as though nothing was supposed to occur.
               const payload = (res.body && res.body.data) || {}
               if (action === 'new' && !created) {
                 const why = payload.sessionError || payload.workspaceWarning || '宿主没有返回会话 id'
-                setNote({ kind: 'error', text: '交付已创建，但没有打开开发会话：' + why })
-              }
-              if (created) {
-                // Land in the conversation the delivery just opened. A missing
-                // service leaves the user on this page with the session id.
-                const service = uiContext
-                  ? (typeof uiContext.get === 'function' ? uiContext.get('uiWorkspace') : null) || uiContext.uiWorkspace
-                  : null
-                if (service && typeof service.openSession === 'function') {
-                  try {
-                    setCreating(false)
-                    service.openSession(created)
-                  } catch (e) {
-                    setNote({ kind: 'ok', text: '已创建，但跳转失败：' + String((e && e.message) || e) })
-                  }
-                }
+                setNote({ kind: 'error', text: '交付已创建，但没有创建开发会话：' + why })
+              } else if (action === 'new') {
+                // Creating a delivery stays on this page. The conversation is
+                // ready, but navigating away automatically would hide the list
+                // the user just added to; the card button opens it explicitly.
+                setNote({
+                  kind: 'ok',
+                  text: '交付已创建，开发会话已就绪。需要继续开发时，点这张交付卡片上的「打开开发会话」。',
+                })
               }
             }
             load()
