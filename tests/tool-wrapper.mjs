@@ -6,6 +6,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { apply } from '../index.js'
+import { actions } from '../lib/actions.js'
 
 let definition
 // `inject(deps, callback)` is the only Cordis API the bundle uses besides
@@ -64,7 +65,7 @@ assert.equal(definition.name, 'delivery')
 assert.equal(definition.timeoutMs, 900_000)
 assert.equal(definition.isConcurrencySafe(), false)
 assert.deepEqual(definition.parameters.required, ['action'])
-assert.equal(definition.parameters.properties.action.enum.length, 10)
+assert.deepEqual([...definition.parameters.properties.action.enum].sort(), Object.keys(actions).sort(), 'every action offered by the tool must have a handler')
 assert.equal(definition.output.schema.required.includes('summary'), true)
 assert.equal(definition.output.schema.properties.data.type, 'string')
 

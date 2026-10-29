@@ -6,7 +6,7 @@ import { limitText, redact } from './lib/util.js'
 export const name = 'delivery-workflow'
 export const inject = ['tools', 'workingDirectory']
 
-const ACTIONS = ['doctor', 'new', 'intake', 'phase', 'init', 'verify', 'build', 'deploy', 'report', 'status']
+const ACTIONS = ['doctor', 'new', 'intake', 'phase', 'init', 'verify', 'build', 'deploy', 'report', 'status', 'close', 'remove', 'doc']
 const PHASE_STATUSES = ['pending', 'running', 'passed', 'failed', 'blocked', 'skipped']
 
 const parameters = {
@@ -23,7 +23,9 @@ const parameters = {
         'phase: record approval/status for a phase; init: fetch, checkout and prepare projects;',
         'verify: run configured checks and a secret scan; build: trigger or record a Jenkins build;',
         'deploy: preview/apply an environment deploy and health check; report: write report.md;',
-        'status: list runs or show one run.',
+        'status: list runs or show one run;',
+        'doc: read a Feishu requirement document by link (docUrl) — this is how the requirement text is fetched;',
+        'never open the Feishu link with a browser, it needs a login and will only reach the sign-in page.',
       ].join(' '),
     },
     workspace: {
