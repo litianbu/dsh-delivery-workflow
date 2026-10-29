@@ -172,13 +172,16 @@ const PENDING_BUILDS = new Set()
 
     /** Accept both the array returned by the Host and a name-keyed map. */
     function projectList(raw) {
+      // `jenkins` has to survive this reshaping: the creation form prefills the
+      // job from it, and dropping the field here is why the input stayed empty.
+      const jobMap = (value) => (value && typeof value === 'object' && value.jenkins && typeof value.jenkins === 'object' ? value.jenkins : {})
       if (Array.isArray(raw)) {
         return raw
           .filter((item) => item && typeof item === 'object')
-          .map((item, index) => ({ name: item.name || 'project-' + index, path: item.path || '' }))
+          .map((item, index) => ({ name: item.name || 'project-' + index, path: item.path || '', jenkins: jobMap(item) }))
       }
       if (raw && typeof raw === 'object') {
-        return Object.keys(raw).map((name) => ({ name: name, path: (raw[name] && raw[name].path) || '' }))
+        return Object.keys(raw).map((name) => ({ name: name, path: (raw[name] && raw[name].path) || '', jenkins: jobMap(raw[name]) }))
       }
       return []
     }
