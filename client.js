@@ -107,15 +107,22 @@ const PENDING_BUILDS = new Set()
       return Boolean(run && (run.closed === true || run.status === 'closed'))
     }
 
-    // The current stage is the phase the host is running, else the furthest
-    // phase that already ended, else intake.
+    // The current stage is the latest phase the host is running, else the
+    // furthest phase that already ended, else intake.
+    //
+    // "Latest" instead of "first" matters once a delivery is created: `new`
+    // puts develop into running immediately, so a later intake (the same run
+    // going back to read the document) would otherwise pull the card back to
+    // 待开发 while the branch and the worktree already exist.
     function stageOf(run) {
       if (isClosed(run)) return 'closed'
       const phases = (run && run.phases) || {}
+      let running = ''
       for (let i = 0; i < ORDER.length; i += 1) {
         const entry = phases[ORDER[i]]
-        if (entry && entry.status === 'running') return ORDER[i]
+        if (entry && entry.status === 'running') running = ORDER[i]
       }
+      if (running) return running
       let last = ''
       for (let i = 0; i < ORDER.length; i += 1) {
         const entry = phases[ORDER[i]]
