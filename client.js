@@ -6,7 +6,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
-    const { useState, useEffect, useCallback } = React
+    const { useState, useEffect, useCallback, useRef } = React
 
     const WORKSPACE = '/Users/runzhili/Desktop/biomap-delivery'
     // Captured at apply() time. The shell owns navigation, so a created
@@ -46,6 +46,11 @@ window.__ModuleLoader__.load({
       { label: '部署', phases: ['deploy'] },
     ]
     const OPS = ['build', 'deploy']
+
+// A build request stays open until Jenkins reports a result. The button must not
+// imply the click failed, and a second click must not start a second build, so
+// in-flight builds are tracked here instead of through the busy flag.
+const PENDING_BUILDS = new Set()
 
     const S = {
       wrap: { height: '100%', minHeight: 0, overflow: 'auto', font: 'inherit', color: 'inherit', boxSizing: 'border-box' },
@@ -340,12 +345,21 @@ window.__ModuleLoader__.load({
                 openRunSession(run.sessionId)
               },
             }, '打开开发会话') : null,
-            OPS.map((name) => h('button', {
-              key: name,
-              style: Object.assign({}, S.sm, props.busy === name + ':' + run.id ? { opacity: 0.5 } : null),
-              disabled: props.busy === name + ':' + run.id,
-              onClick: () => props.onAction(name, run),
-            }, props.busy === name + ':' + run.id ? '执行中…' : (LABEL[name] || name))),
+            OPS.map((name) => {
+              const busyKey = props.busy === name + ':' + run.id
+              // The run's build phase is the source of truth for "building": it
+              // survives a refresh and only clears when Jenkins reports success
+              // or failure, so a click can never start a second build on top of
+              // a running one.
+              const building = name === 'build' && Boolean(run.phases && run.phases.build && run.phases.build.status === 'running')
+              const locked = busyKey || building
+              return h('button', {
+                key: name,
+                style: Object.assign({}, S.sm, locked ? { opacity: 0.5 } : null),
+                disabled: locked,
+                onClick: () => props.onAction(name, run),
+              }, locked ? (name === 'build' ? '构建中…' : '执行中…') : (LABEL[name] || name))
+            }),
             h('span', { style: S.hint }, '流程未结束：随时可重跑'),
             h('button', { style: S.smGhost, onClick: () => props.onAction('close', run) }, '标记完成'),
             h('button', {
@@ -719,8 +733,18 @@ window.__ModuleLoader__.load({
       }
       return lines.join('\n') || '执行失败（宿主没有返回原因）'
     }
-      const post = useCallback((action, extra, runId) => {
-        setBusy(runId ? action + ':' + runId : action)
+      const post = useCallback((action, extra, runId, options) => {
+        const silent = Boolean(options && options.silent)
+        const busyKey = runId ? action + ':' + runId : action
+        // A click on 构建 while Jenkins is still building is refused rather than
+        // queued: the button is locked until the build reports success or
+        // failure. Background polls pass silent and are exempt.
+        if (!silent && action === 'build' && runId && PENDING_BUILDS.has(runId)) {
+          setNote({ kind: 'ok', text: '构建还在进行中（Jenkins 尚未返回结果），结束后才能再次点击。' })
+          return Promise.resolve({ ok: false, body: null, refused: true })
+        }
+        if (!silent && action === 'build' && runId) PENDING_BUILDS.add(runId)
+        if (!silent) setBusy(busyKey)
         return fetch('/delivery/api/action', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -763,16 +787,97 @@ window.__ModuleLoader__.load({
               }
             }
             load()
-            return !failed
+            return { ok: !failed, body: res.body }
           })
           .catch((e) => {
             setNote({ kind: 'error', text: String(e && e.message ? e.message : e) })
-            return false
+            return { ok: false, body: null }
           })
-          .finally(() => setBusy(''))
+          .finally(() => {
+            if (!silent) {
+              if (action === 'build' && runId) PENDING_BUILDS.delete(runId)
+              setBusy('')
+            }
+          })
       }, [load])
 
-      const onAction = (action, run, extra) => post(action, Object.assign({ run: run.id }, extra || {}), run.id)
+      // A build outlives the click: the host keeps the run's build phase
+      // "running" until Jenkins reports a result, and this loop notices that
+      // result within a few seconds. Polling in the background is what lets the
+      // button unlock by itself instead of pinning the page to one long request.
+      const buildWatch = useRef({})
+
+      const stopWatch = useCallback((runId) => {
+        const timer = buildWatch.current[runId]
+        if (timer) {
+          clearTimeout(timer)
+          delete buildWatch.current[runId]
+        }
+      }, [])
+
+      const watchBuild = useCallback((runId, hint) => {
+        if (buildWatch.current[runId]) return
+        let next = hint || {}
+        let misses = 0
+        const tick = () => {
+          buildWatch.current[runId] = setTimeout(() => {
+            delete buildWatch.current[runId]
+            // pollOnly tells the host to observe, never to start another build.
+            const extra = { run: runId, waitSeconds: 0, pollOnly: true }
+            if (next.buildUrl) extra.buildUrl = next.buildUrl
+            if (next.queueUrl) extra.queueUrl = next.queueUrl
+            post('build', extra, runId, { silent: true }).then((out) => {
+              // A transient host error must not silently leave the button locked
+              // at 构建中: retry a few times before giving up.
+              if (!out || !out.ok) {
+                misses += 1
+                if (misses <= 3) tick()
+                return
+              }
+              misses = 0
+              const payload = (out.body && out.body.data) || {}
+              const status = payload.status
+              if (!status || status === 'success' || status === 'failed') return
+              next = payload
+              tick()
+            })
+          }, 5000)
+        }
+        tick()
+      }, [post])
+
+      // Resuming a build that is still running, including one left over from
+      // before a page refresh: without this the locked button would never clear.
+      useEffect(() => {
+        const list = (state.data && state.data.runs) || []
+        list.forEach((run) => {
+          if (run.phases && run.phases.build && run.phases.build.status === 'running') {
+            watchBuild(run.id, run.build || {})
+          }
+        })
+      }, [state.data, watchBuild])
+
+      useEffect(() => () => {
+        Object.keys(buildWatch.current).forEach((runId) => stopWatch(runId))
+      }, [stopWatch])
+
+      const onAction = (action, run, extra) => {
+        const payload = Object.assign({ run: run.id }, extra || {})
+        // The click waits only long enough for Jenkins to hand back a queue or
+        // build URL; the rest of the build is followed by watchBuild.
+        if (action === 'build' && payload.waitSeconds == null) payload.waitSeconds = 12
+        return post(action, payload, run.id).then((out) => {
+          if (action === 'build' && out && out.ok) {
+            const data = (out.body && out.body.data) || {}
+            const status = data.status
+            if (!status || status === 'running' || status === 'queued' || status === 'started') {
+              stopWatch(run.id)
+              watchBuild(run.id, data)
+            }
+          }
+          return out
+        })
+      }
 
       const data = state.data || {}
       const projects = projectList(data.config && data.config.projects)
@@ -808,8 +913,8 @@ window.__ModuleLoader__.load({
             busy: busy === 'new',
             onWarn: (text) => setNote({ kind: 'error', text: text }),
             onCancel: () => setCreating(false),
-            onSubmit: (extra) => post('new', extra).then((ok) => {
-              if (ok) setCreating(false)
+            onSubmit: (extra) => post('new', extra).then((out) => {
+              if (out && out.ok) setCreating(false)
             }),
           }) : null,
           h('div', { style: S.sectionhead }, '进行中 ', h('span', { style: S.count }, String(active.length))),

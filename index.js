@@ -119,11 +119,21 @@ const parameters = {
       type: 'string',
       description: 'build: poll an already-triggered Jenkins build instead of triggering a new one.',
     },
+    queueUrl: {
+      type: 'string',
+      description: 'build: queue item URL to resolve when the build URL is not known yet.',
+    },
+    pollOnly: {
+      type: 'boolean',
+      description:
+        'build: only observe an already-triggered build. Never starts a new Jenkins build, and resets state that can no longer be matched to a build.',
+    },
     waitSeconds: {
       type: 'number',
       minimum: 0,
       maximum: 600,
-      description: 'build: seconds to wait for Jenkins (default 120). A still-running build returns its URL for a later poll.',
+      description:
+        'build: seconds to wait for Jenkins (default 120); 0 performs a single check and returns immediately. A still-running build returns its URL for a later poll.',
     },
     rollback: {
       type: 'boolean',
