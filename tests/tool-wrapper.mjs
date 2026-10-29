@@ -1,5 +1,6 @@
-// Exercises the registered tool definition without a running DSH Agent:
-// registration shape, execute() success/failure paths, and render().
+// Exercises the bundle without a running DSH Agent: the registered tool
+// definition (registration shape, execute() success/failure paths, render())
+// and the optional webServer mount that publishes the /delivery routes.
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -7,6 +8,12 @@ import path from 'node:path'
 import { apply } from '../index.js'
 
 let definition
+// `inject(deps, callback)` is the only Cordis API the bundle uses besides
+// tools/workingDirectory: the real Context calls the callback once the
+// dependency is available, and never calls it in a host that has no such
+// service. Recording the calls models that exactly, so the CLI-only shape
+// stays testable and the web mount is exercised deliberately below.
+const injections = []
 const ctx = {
   tools: {
     register(value) {
@@ -19,11 +26,40 @@ const ctx = {
     },
   },
   logger: { info() {} },
+  inject(deps, callback) {
+    injections.push({ deps, callback })
+    return () => {}
+  },
 }
 
 apply(ctx)
 
 assert.ok(definition, 'apply() must register a tool')
+assert.equal(injections.length, 1, 'apply() must declare exactly one injected mount')
+assert.deepEqual(injections[0].deps, ['webServer'])
+
+// A Host that does have a web server is what mounts the HTTP routes. A stub
+// keeps the check honest without starting one: register() must be called with
+// the /delivery prefix, and the effect must own the returned disposer.
+const routes = []
+const host = {
+  webServer: {
+    register(route) {
+      routes.push(route)
+      return () => {}
+    },
+  },
+  effect(fn) {
+    const dispose = fn()
+    return typeof dispose === 'function' ? dispose : () => {}
+  },
+  logger: { info() {} },
+}
+injections[0].callback(host)
+assert.equal(routes.length, 1, 'the webServer mount must register one prefix route')
+assert.equal(routes[0].kind, 'prefix')
+assert.equal(routes[0].path, '/delivery')
+assert.equal(typeof routes[0].handler, 'function')
 assert.equal(definition.name, 'delivery')
 assert.equal(definition.timeoutMs, 900_000)
 assert.equal(definition.isConcurrencySafe(), false)
