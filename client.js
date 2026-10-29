@@ -37,16 +37,15 @@ window.__ModuleLoader__.load({
       intake: '需求', init: '初始化', develop: '开发', verify: '验证',
       build: '构建', deploy: '部署', accept: '验收', report: '报告', closed: '归档',
     }
-    const ORDER = ['intake', 'init', 'develop', 'verify', 'build', 'deploy', 'accept', 'report']
+    const ORDER = ['intake', 'init', 'develop', 'build', 'deploy', 'accept', 'report']
     // The five stops the page draws in a card, and the phases behind each one.
     const STOPS = [
       { label: '需求', phases: ['intake'] },
       { label: '开发', phases: ['init', 'develop'] },
-      { label: '验证', phases: ['verify'] },
       { label: '构建', phases: ['build'] },
       { label: '部署', phases: ['deploy'] },
     ]
-    const OPS = ['verify', 'build', 'deploy']
+    const OPS = ['build', 'deploy']
 
     const S = {
       wrap: { height: '100%', minHeight: 0, overflow: 'auto', font: 'inherit', color: 'inherit', boxSizing: 'border-box' },
@@ -290,10 +289,12 @@ window.__ModuleLoader__.load({
     }
 
     function RunCard(props) {
-      const [open, setOpen] = useState(true)
       const run = props.run
-      const requirement = requirementOf(run)
       const stage = stageOf(run)
+      // Archived runs start collapsed: the archive only grows, and dozens of
+      // expanded cards would bury the live work above them.
+      const [open, setOpen] = useState(stage !== 'closed')
+      const requirement = requirementOf(run)
       const badge = badgeOf(run, stage)
       const docs = docsOf(run)
       const projects = Array.isArray(run.projects) ? run.projects : []
@@ -304,6 +305,16 @@ window.__ModuleLoader__.load({
           h('span', { style: S.id }, requirement.id || run.id || '-'),
           h('span', { style: S.title }, requirement.title || '(未命名需求)'),
           h('span', { style: badgeStyle(badge.tone) }, badge.text),
+          // Archived cards start collapsed, so the delete control sits on the
+          // header row; stopPropagation keeps that click from also toggling.
+          !live ? h('button', {
+            style: Object.assign({}, S.smGhost, { color: DANGER, fontSize: 11 }),
+            onClick: (event) => {
+              if (event && event.stopPropagation) event.stopPropagation()
+              if (typeof window === 'undefined' || typeof window.confirm !== 'function') return
+              if (window.confirm('删除交付记录 ' + run.id + '？只删除本地记录，不会删除分支、代码或开发会话，不可撤销。')) props.onAction('remove', run)
+            },
+          }, '删除') : null,
           h('span', { style: { marginLeft: 'auto', fontFamily: mono, fontSize: 11.5, opacity: 0.5 } }, run.branch || '')),
         open ? h('div', null,
           docs.length
