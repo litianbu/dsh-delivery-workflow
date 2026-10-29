@@ -15,22 +15,22 @@ window.__ModuleLoader__.load({
     let uiContext = null
     // Only the brand tokens below are guaranteed to exist in this shell;
     // everything else is a concrete colour that works in light and dark themes.
-    const ACCENT = 'var(--dsw-alias-brand-primary, #2563eb)'
-    const PRIMARY_BG = 'var(--dsw-alias-button-primary-fill, #2563eb)'
+    const ACCENT = '#2563eb'
+    const PRIMARY_BG = '#2563eb'
     // brand-primary-invert is NOT "text on brand": in this theme it resolves to
     // the same dark neutral as the fill, which made the label invisible on the
     // button. bg-base is the page background, so it always inverts the fill.
-    const PRIMARY_FG = 'var(--dsw-alias-bg-base, #ffffff)'
+    const PRIMARY_FG = '#ffffff'
     const BORDER = 'rgba(127,127,127,.22)'
-    const STRONG = 'rgba(127,127,127,.38)'
+    const STRONG = 'rgba(127,127,127,.42)'
     const CHIP_BG = 'rgba(127,127,127,.12)'
-    const CARD_BG = 'rgba(127,127,127,.05)'
+    const CARD_BG = 'rgba(127,127,127,.07)'
     const FIELD_BG = 'rgba(127,127,127,.08)'
     const OK = '#16a34a'
-    const OK_BG = 'rgba(22,163,74,.10)'
-    const OK_BD = 'rgba(22,163,74,.40)'
-    const ACCENT_BG = 'rgba(127,127,127,.14)'
-    const DANGER = 'rgba(220,38,38,.9)'
+    const OK_BG = 'rgba(22,163,74,.12)'
+    const OK_BD = 'rgba(22,163,74,.45)'
+    const ACCENT_BG = 'rgba(37,99,235,.12)'
+    const DANGER = '#dc2626'
     const mono = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
     const LABEL = {
@@ -53,30 +53,31 @@ window.__ModuleLoader__.load({
       page: { maxWidth: 980, margin: '0 auto', padding: '26px 32px 80px' },
       head: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22, flexWrap: 'wrap' },
       h1: { fontSize: 17, margin: 0, fontWeight: 600 },
-      sub: { opacity: 0.42, fontSize: 12 },
+      sub: { opacity: 0.6, fontSize: 12 },
       spacer: { flex: 1 },
       ws: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.75, border: '1px solid ' + BORDER, borderRadius: 7, padding: '5px 10px', background: CARD_BG },
       primary: { font: 'inherit', fontSize: 12, padding: '6px 13px', borderRadius: 7, border: '1px solid ' + PRIMARY_BG, background: PRIMARY_BG, color: PRIMARY_FG, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' },
       ghost: { font: 'inherit', fontSize: 12, padding: '6px 13px', borderRadius: 7, border: '1px solid transparent', background: 'transparent', color: 'inherit', opacity: 0.6, cursor: 'pointer' },
       sm: { font: 'inherit', fontSize: 12, padding: '4px 10px', borderRadius: 7, border: '1px solid ' + STRONG, background: CARD_BG, color: 'inherit', cursor: 'pointer' },
-      smGhost: { font: 'inherit', fontSize: 12, padding: '4px 10px', borderRadius: 7, border: '1px solid transparent', background: 'transparent', color: 'inherit', opacity: 0.55, cursor: 'pointer' },
+      smGhost: { font: 'inherit', fontSize: 12, padding: '4px 10px', borderRadius: 7, border: '1px solid transparent', background: 'transparent', color: 'inherit', opacity: 0.68, cursor: 'pointer' },
+      smBtn: { font: 'inherit', fontSize: 12, padding: '4px 10px', borderRadius: 7, border: '1px solid ' + STRONG, background: FIELD_BG, color: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' },
       sectionhead: { display: 'flex', alignItems: 'center', gap: 8, margin: '26px 0 10px', fontSize: 12, opacity: 0.6 },
       count: { opacity: 0.65 },
       card: { border: '1px solid ' + BORDER, borderRadius: 10, background: CARD_BG, padding: '15px 17px', marginBottom: 12 },
       top: { display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', cursor: 'pointer' },
-      id: { fontFamily: mono, fontSize: 12, opacity: 0.62 },
+      id: { fontFamily: mono, fontSize: 12, opacity: 0.72 },
       title: { fontSize: 14, fontWeight: 600 },
       badgeBase: { fontSize: 11, padding: '1px 8px', borderRadius: 999, border: '1px solid ' + STRONG, opacity: 0.7 },
-      meta: { display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 9, opacity: 0.62, fontSize: 12 },
+      meta: { display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 9, opacity: 0.72, fontSize: 12 },
       code: { fontFamily: mono, background: CHIP_BG, padding: '1px 6px', borderRadius: 5 },
       docs: { display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 10 },
       doc: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '3px 9px', borderRadius: 6, border: '1px solid ' + BORDER, background: 'transparent', color: 'inherit', textDecoration: 'none' },
-      docKind: { opacity: 0.45, fontSize: 11 },
+      docKind: { opacity: 0.6, fontSize: 11 },
       phases: { display: 'flex', alignItems: 'center', margin: '14px 0 12px', flexWrap: 'wrap' },
       bar: { width: 18, height: 1, background: STRONG, margin: '0 9px' },
       actions: { display: 'flex', gap: 7, flexWrap: 'wrap', paddingTop: 12, borderTop: '1px solid ' + BORDER, alignItems: 'center' },
-      hint: { fontSize: 12, opacity: 0.42, marginLeft: 'auto' },
-      empty: { fontSize: 12, opacity: 0.42, padding: '2px 0' },
+      hint: { fontSize: 12, opacity: 0.6, marginLeft: 'auto' },
+      empty: { fontSize: 12, opacity: 0.6, padding: '2px 0' },
       wizard: { border: '1px solid ' + STRONG, borderRadius: 12, padding: '20px 22px', background: CARD_BG, marginBottom: 12 },
       wizh2: { fontSize: 14, margin: '0 0 4px' },
       lead: { opacity: 0.6, fontSize: 12, margin: '0 0 18px' },
@@ -92,7 +93,7 @@ window.__ModuleLoader__.load({
       projRow: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', maxWidth: 520, boxSizing: 'border-box', font: 'inherit', fontSize: 12, color: 'inherit', textAlign: 'left', padding: '8px 10px', borderRadius: 7, border: '1px solid ' + BORDER, background: FIELD_BG, cursor: 'pointer' },
       projOn: { border: '1px solid ' + ACCENT, background: ACCENT_BG },
       tag: { flex: '0 0 auto', fontSize: 11, padding: '1px 8px', borderRadius: 999, color: OK, border: '1px solid ' + OK_BD, background: OK_BG },
-      note: { fontSize: 11, opacity: 0.42, marginTop: 6 },
+      note: { fontSize: 11, opacity: 0.6, marginTop: 6 },
       warn: { fontSize: 11, color: DANGER, marginTop: 6 },
       inline: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
       wizfoot: { display: 'flex', gap: 8, alignItems: 'center', paddingTop: 16 },
@@ -198,8 +199,98 @@ window.__ModuleLoader__.load({
       return h('div', { style: S.phases }, nodes)
     }
 
+    // Open the conversation a run is bound to. The shell owns navigation, so the
+    // session id is handed over instead of guessing a route; a missing service is
+    // reported rather than silently pretending the conversation opened.
+    function openRunSession(sessionId) {
+      if (!sessionId) return
+      const service = uiContext
+        ? (typeof uiContext.get === 'function' ? uiContext.get('uiWorkspace') : null) || uiContext.uiWorkspace
+        : null
+      if (!service || typeof service.openSession !== 'function') {
+        console.warn('[delivery] uiWorkspace.openSession is unavailable; cannot open ' + sessionId)
+        return
+      }
+      try {
+        const pending = service.openSession(sessionId)
+        if (pending && typeof pending.catch === 'function') {
+          pending.catch((error) => console.warn('[delivery] openSession failed', error))
+        }
+      } catch (error) {
+        console.warn('[delivery] openSession failed', error)
+      }
+    }
+
+    // A notebook deploy runs by hand in the Kubeflow terminal, so the card can
+    // only ever hold what the operator pastes back. The panel shows the exact
+    // command and refuses to record an empty result: the host checks the pasted
+    // text against the configured markers and decides pass or fail from that.
+    function DeployPanel(props) {
+      const run = props.run
+      const plan = run.deployPlan && run.deployPlan[run.env || 'test']
+      const [out, setOut] = useState('')
+      const [copied, setCopied] = useState('')
+      if (!plan || !plan.command) return null
+      const phase = (run.phases && run.phases.deploy) || {}
+      if (phase.status === 'passed') return null
+      const text = String(out || '')
+      const copy = () => {
+        const clipboard = typeof navigator !== 'undefined' ? navigator.clipboard : null
+        if (!clipboard || typeof clipboard.writeText !== 'function') {
+          setCopied('复制不可用，请手动选中命令')
+          return
+        }
+        clipboard.writeText(String(plan.command))
+          .then(() => setCopied('已复制'))
+          .catch((e) => setCopied('复制失败：' + String((e && e.message) || e)))
+      }
+      const submit = () => {
+        if (!text.trim()) return
+        props.onAction('deploy', run, { output: text, env: run.env || 'test' })
+      }
+      return h('div', {
+        style: {
+          marginTop: 12, padding: '10px 12px', border: '1px solid ' + BORDER, borderRadius: 10,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        },
+      },
+        h('div', { style: { display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 12, flexWrap: 'wrap' } },
+          h('span', null, '部署命令'),
+          h('span', { style: S.hint }, '在 notebook 终端执行，然后把输出粘回下面')),
+        h('pre', {
+          style: {
+            margin: 0, padding: '8px 10px', background: CHIP_BG, borderRadius: 8, fontSize: 11.5,
+            fontFamily: mono, whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: 160, overflow: 'auto',
+          },
+        }, String(plan.command)),
+        h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
+          plan.notebookUrl
+            ? h('a', { href: plan.notebookUrl, target: '_blank', rel: 'noreferrer', style: S.sm }, '打开 Notebook')
+            : null,
+          h('button', { style: S.sm, onClick: copy }, '复制命令'),
+          copied ? h('span', { style: S.hint }, copied) : null,
+          Array.isArray(plan.expect) && plan.expect.length
+            ? h('span', { style: S.hint }, '成功标记：' + plan.expect.join(' | '))
+            : null),
+        h('textarea', {
+          style: {
+            width: '100%', boxSizing: 'border-box', fontFamily: mono, fontSize: 11.5, padding: '8px 10px',
+            borderRadius: 8, border: '1px solid ' + BORDER, background: 'transparent', color: 'inherit', resize: 'vertical',
+          },
+          rows: 4,
+          placeholder: '粘贴终端完整输出。没有出现成功标记不会判通过。',
+          value: out,
+          onChange: (event) => setOut(event.target.value),
+        }),
+        h('button', {
+          style: Object.assign({}, S.sm, { alignSelf: 'flex-start' }, props.busy || !text.trim() ? { opacity: 0.5 } : null),
+          disabled: Boolean(props.busy) || !text.trim(),
+          onClick: submit,
+        }, props.busy ? '记录中…' : '记录执行结果'))
+    }
+
     function RunCard(props) {
-      const [open, setOpen] = useState(false)
+      const [open, setOpen] = useState(true)
       const run = props.run
       const requirement = requirementOf(run)
       const stage = stageOf(run)
@@ -227,15 +318,39 @@ window.__ModuleLoader__.load({
             run.sessionId ? h('span', null, '会话 ', h('code', { style: S.code }, run.sessionId)) : null,
             stage === 'closed' && run.closedAt ? h('span', null, String(run.closedAt).slice(0, 10) + ' 手动标记完成') : null),
           h(Timeline, { run: run, stage: stage }),
+          h(DeployPanel, { run: run, busy: props.busy === 'deploy:' + run.id, onAction: props.onAction }),
           live ? h('div', { style: S.actions },
+            // The run already owns a conversation: this is the way back into it,
+            // so in-progress work continues instead of being re-described.
+            run.sessionId ? h('button', {
+              style: Object.assign({}, S.sm, { background: ACCENT, borderColor: ACCENT, color: PRIMARY_FG, fontWeight: 500 }),
+              onClick: (event) => {
+                if (event && typeof event.stopPropagation === 'function') event.stopPropagation()
+                openRunSession(run.sessionId)
+              },
+            }, '打开开发会话') : null,
             OPS.map((name) => h('button', {
               key: name,
-              style: Object.assign({}, S.sm, props.busy === name ? { opacity: 0.5 } : null),
-              disabled: props.busy === name,
+              style: Object.assign({}, S.sm, props.busy === name + ':' + run.id ? { opacity: 0.5 } : null),
+              disabled: props.busy === name + ':' + run.id,
               onClick: () => props.onAction(name, run),
-            }, props.busy === name ? '执行中…' : (LABEL[name] || name))),
+            }, props.busy === name + ':' + run.id ? '执行中…' : (LABEL[name] || name))),
             h('span', { style: S.hint }, '流程未结束：随时可重跑'),
-            h('button', { style: S.smGhost, onClick: () => props.onAction('close', run) }, '标记完成')) : null)
+            h('button', { style: S.smGhost, onClick: () => props.onAction('close', run) }, '标记完成'),
+            h('button', {
+              style: Object.assign({}, S.smGhost, { color: DANGER }),
+              onClick: () => {
+                // Deleting a record cannot be undone, so it asks first and spells
+                // out what is NOT touched. Without a working confirm it refuses
+                // rather than deleting silently.
+                if (typeof window === 'undefined' || typeof window.confirm !== 'function') {
+                  console.warn('[delivery] window.confirm is unavailable; refusing to delete without confirmation')
+                  return
+                }
+                const ok = window.confirm('删除交付记录 ' + run.id + '？\n\n只删除本地记录，不会删除分支、代码或开发会话。\n此操作不可撤销。')
+                if (ok) props.onAction('remove', run)
+              },
+            }, '删除')) : null)
           : null)
     }
 
@@ -264,13 +379,13 @@ window.__ModuleLoader__.load({
 
     function Wizard(props) {
       const [v, setV] = useState({
-        requirementId: '',
-        title: '',
         docs: [''],
         project: '',
         env: props.envs[0] || 'test',
         base: '',
         branch: '',
+        jenkinsJob: '',
+        allowDirty: false,
       })
       const [br, setBr] = useState({ status: 'idle', local: [], current: '', blocking: [], error: null })
 
@@ -278,31 +393,55 @@ window.__ModuleLoader__.load({
       // before the user clicks a row (and when only one project exists).
       const projectName = v.project || (props.projects[0] && props.projects[0].name) || ''
 
+      // The picker lists what the user actually works on: projects from past runs
+      // first (tagged 最近), then the remaining configured ones, each name once.
+      const projectChoices = (() => {
+        const seen = new Set()
+        const out = []
+        for (const run of (props.runs || [])) {
+          for (const name of (Array.isArray(run && run.projects) ? run.projects : [])) {
+            if (seen.has(name)) continue
+            const found = (props.projects || []).find((p) => p.name === name)
+            if (!found) continue
+            seen.add(name)
+            out.push({ name: name, path: found.path || '', recent: true })
+          }
+        }
+        for (const p of (props.projects || [])) {
+          if (seen.has(p.name)) continue
+          seen.add(p.name)
+          out.push({ name: p.name, path: p.path || '', recent: false })
+        }
+        return out
+      })()
+      const chooseProject = (name) => setV(Object.assign({}, v, { project: name, pickedPath: '', base: '' }))
+
       useEffect(() => {
         if (!projectName) {
-          setBr({ status: 'idle', local: [], current: '', blocking: [], error: null })
+          setBr({ status: 'idle', local: [], current: '', blocking: [], defaultBase: '', error: null })
           return undefined
         }
         let live = true
-        setBr({ status: 'loading', local: [], current: '', blocking: [], error: null })
-        fetch('/delivery/api/branches?workspace=' + encodeURIComponent(WORKSPACE) + '&project=' + encodeURIComponent(projectName))
+        setBr({ status: 'loading', local: [], current: '', blocking: [], defaultBase: '', error: null })
+        fetch('/delivery/api/branches?workspace=' + encodeURIComponent(WORKSPACE) + '&project=' + encodeURIComponent(projectName) + '&env=' + encodeURIComponent(v.env || 'test'))
           .then((r) => r.json().then((b) => ({ ok: r.ok, b: b })))
           .then((res) => {
             if (!live) return
             if (!res.ok || res.b.ok === false) {
               const err = (res.b && res.b.error && res.b.error.message) || '读取分支失败'
-              setBr({ status: 'error', local: [], current: '', blocking: [], error: err })
+              setBr({ status: 'error', local: [], current: '', blocking: [], defaultBase: '', error: err })
               return
             }
             const local = res.b.local || []
-            setBr({ status: 'ok', local: local, current: res.b.current || '', blocking: res.b.blocking || [], error: null })
-            setV((prev) => (prev.base || !local.length ? prev : Object.assign({}, prev, { base: res.b.current || local[0] })))
+            const fallback = res.b.defaultBase || res.b.current || local[0] || ''
+            setBr({ status: 'ok', local: local, current: res.b.current || '', blocking: res.b.blocking || [], defaultBase: res.b.defaultBase || '', error: null })
+            setV((prev) => (prev.base || !local.length ? prev : Object.assign({}, prev, { base: fallback })))
           })
           .catch((e) => {
-            if (live) setBr({ status: 'error', local: [], current: '', blocking: [], error: String((e && e.message) || e) })
+            if (live) setBr({ status: 'error', local: [], current: '', blocking: [], defaultBase: '', error: String((e && e.message) || e) })
           })
         return () => { live = false }
-      }, [projectName])
+      }, [projectName, v.env])
 
       const set = (key) => (e) => {
         const next = Object.assign({}, v)
@@ -316,18 +455,48 @@ window.__ModuleLoader__.load({
       }
       const addDoc = () => setV(Object.assign({}, v, { docs: v.docs.concat(['']) }))
       const dropDoc = (index) => setV(Object.assign({}, v, { docs: v.docs.filter((_, i) => i !== index) }))
-      // Selecting the project that is already active must not disturb the
-      // branch choice: with a single configured project the fallback has
-      // already picked it, so a "change" here could only reset 基于.
-      const pickProject = (name) => {
-        if (!name || name === projectName) return
-        // Dropping pickedPath returns the step to the configured list, so the
-        // row shown always matches the project that will actually be used.
-        setV(Object.assign({}, v, { project: name, pickedPath: '', base: '' }))
-      }
       // A directory the user picks is registered as a project first, then used
       // by name. Registering up front is what makes the later phases (branches,
       // verify, build, deploy) able to resolve it at all.
+      // One code path for both entry points: the native picker and a pasted
+      // path. Registering is what makes the directory resolvable by the later
+      // phases, which look projects up by name in the config.
+      const registerDir = async (dir) => {
+        const target = String(dir || '').trim()
+        if (!target) {
+          setV(Object.assign({}, v, { pickError: '先填一个目录路径' }))
+          return
+        }
+        setV(Object.assign({}, v, { picking: true, pickError: '' }))
+        try {
+          const res = await fetch('/delivery/api/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workspace: WORKSPACE, path: target }),
+          })
+          const body = await res.json().catch(() => null)
+          const err = body && body.error
+          if (!res.ok || !body || body.ok === false) {
+            setV(Object.assign({}, v, {
+              picking: false,
+              pickError: err ? String(err.code || 'ERROR') + ' · ' + String(err.message || '') : '登记项目失败',
+            }))
+            return
+          }
+          const registered = (body && body.project) || {}
+          setV(Object.assign({}, v, {
+            picking: false,
+            pickError: '',
+            pathInput: '',
+            project: registered.name || '',
+            pickedPath: registered.path || target,
+            base: '',
+          }))
+        } catch (e) {
+          setV(Object.assign({}, v, { picking: false, pickError: '登记项目失败：' + String((e && e.message) || e) }))
+        }
+      }
+      const addProjectPath = () => registerDir(v.pathInput)
       const pickLocalProject = async () => {
         const service = uiContext
           ? (typeof uiContext.get === 'function' ? uiContext.get('uiWorkspace') : null) || uiContext.uiWorkspace
@@ -366,14 +535,10 @@ window.__ModuleLoader__.load({
       const docUrls = v.docs.map((item) => String(item || '').trim()).filter(Boolean)
 
       const submit = () => {
-        const id = String(v.requirementId || '').trim()
-        const title = String(v.title || '').trim()
-        if (!id || !title) { props.onWarn('需求 ID 和标题都要填'); return }
+        if (!docUrls.length) { props.onWarn('先贴一个飞书文档'); return }
         if (!projectName) { props.onWarn('至少选一个项目'); return }
         if (br.status === 'error') { props.onWarn('读不到分支：' + br.error); return }
         const extra = {
-          requirementId: id,
-          title: title,
           env: v.env || 'test',
           projects: [projectName],
           createBranch: true,
@@ -381,27 +546,30 @@ window.__ModuleLoader__.load({
         }
         if (v.base) extra.base = v.base
         if (v.branch.trim()) extra.branch = v.branch.trim()
+        const jenkinsJob = String(v.jenkinsJob || '').trim()
+        if (jenkinsJob) extra.jenkinsJob = jenkinsJob
+        if (v.allowDirty) extra.allowDirty = true
         if (docUrls.length) { extra.docUrls = docUrls; extra.docUrl = docUrls[0] }
         props.onSubmit(extra)
       }
 
       const branchChoices = br.local.length ? br.local : (br.current ? [br.current] : [])
+      // 最近用过的项目做快捷入口；配置里的其余项目也要能一键选到
+      const recentNames = projectChoices.filter((item) => item.recent).map((item) => item.name)
+      const otherNames = projectChoices.filter((item) => !item.recent).map((item) => item.name)
+      const projectPath = v.pickedPath || ((props.projects.find((p) => p.name === projectName) || {}).path || '')
+      const projectChip = (name) => h('button', {
+        key: name,
+        style: Object.assign({}, S.smGhost, name === projectName
+          ? { opacity: 1, border: '1px solid ' + ACCENT, background: ACCENT_BG, color: ACCENT }
+          : null),
+        onClick: () => chooseProject(name),
+      }, name)
 
       return h('div', { style: S.wizard },
         h('h2', { style: S.wizh2 }, '新建交付'),
-        h('p', { style: S.lead }, '填需求号 → 贴飞书文档 → 选项目 → 定分支，四步走完开始开发。'),
-        h(Step, { no: 1, label: '需求标识', on: true, first: true },
-          h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
-            h('input', {
-              style: Object.assign({}, S.input, { flex: '0 0 200px', width: 'auto' }), value: v.requirementId,
-              placeholder: '需求 ID，如 TONGXI-142', onChange: set('requirementId'),
-            }),
-            h('input', {
-              style: Object.assign({}, S.input, { flex: 1, minWidth: 200 }), value: v.title,
-              placeholder: '一句话标题', onChange: set('title'),
-            })),
-          h('div', { style: S.note }, '需求 ID 会进入分支名和 run 目录，创建后不建议改。')),
-        h(Step, { no: 2, label: '飞书文档', on: true },
+        h('p', { style: S.lead }, '贴飞书文档 → 选项目 → 建分支 → 开会话，四步走完开始开发。'),
+        h(Step, { no: 1, label: '飞书文档', on: true },
           v.docs.map((doc, i) => {
             const kind = docKindOf(doc)
             return h('div', { key: i, style: S.field },
@@ -418,44 +586,28 @@ window.__ModuleLoader__.load({
           }),
           h('div', { style: S.inline },
             h('button', { style: S.smGhost, onClick: addDoc }, '+ 再加一个文档'),
-            h('span', { style: { fontSize: 11, opacity: 0.42 } }, docUrls.length ? String(docUrls.length) + ' 个链接' : '可留空')),
+            h('span', { style: { fontSize: 11, opacity: 0.6 } }, docUrls.length ? String(docUrls.length) + ' 个链接' : '必填')),
           h('div', { style: S.note }, '支持多个飞书文档；第一个作为需求文档，其余在 intake 阶段一并拉取。')),
-        h(Step, { no: 3, label: '本地项目 · 分支', on: true },
-          v.pickedPath
-            ? h('div', { style: Object.assign({}, S.field, { marginBottom: 10 }) },
-                h('span', { style: { opacity: 0.5 } }, '项目'),
-                h('span', { style: { fontWeight: 600 } }, v.project || '(未命名)'),
-                h('span', { style: { fontSize: 11, opacity: 0.4, marginLeft: 'auto', wordBreak: 'break-all', textAlign: 'right' } }, v.pickedPath),
-                h('span', { style: S.tag }, '本地目录'),
-                h('button', {
-                  style: S.smGhost,
-                  title: '改回配置里的项目',
-                  onClick: () => setV(Object.assign({}, v, { pickedPath: '', project: '', base: '' })),
-                }, '\u00d7'))
-            : props.projects.length === 1
-            // One configured project: there is nothing to choose, so show it as
-            // a settled field instead of a clickable row that cannot change.
-            ? h('div', { style: Object.assign({}, S.field, { marginBottom: 10 }) },
-                h('span', { style: { opacity: 0.5 } }, '项目'),
-                h('span', { style: { fontWeight: 500 } }, props.projects[0].name),
-                h('span', { style: { fontSize: 11, opacity: 0.4, marginLeft: 'auto', wordBreak: 'break-all', textAlign: 'right' } }, props.projects[0].path || ''),
-                h('span', { style: S.tag }, '当前项目'))
-            : props.projects.length > 1
-              ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 } },
-                  props.projects.map((p) => h('button', {
-                    key: p.name,
-                    onClick: () => pickProject(p.name),
-                    style: projectName === p.name ? Object.assign({}, S.projRow, S.projOn) : S.projRow,
-                  },
-                    h('span', { style: { fontSize: 10, opacity: 0.85 } }, projectName === p.name ? '\u25cf' : '\u25cb'),
-                    h('span', { style: { fontWeight: projectName === p.name ? 600 : 400 } }, p.name),
-                    h('span', { style: { fontSize: 11, opacity: 0.4, marginLeft: 'auto', wordBreak: 'break-all', textAlign: 'right' } }, p.path || ''))))
-              : h('div', { style: S.empty }, '配置里没有项目'),
-          h('div', { style: S.inline },
-            h('button', { style: S.smGhost, onClick: pickLocalProject }, '\ud83d\udcc1 选择本地目录…'),
-            v.pickedPath
-              ? h('span', { style: { fontSize: 11, opacity: 0.45 } }, '已登记，可继续选别的目录')
-              : h('span', { style: { fontSize: 11, opacity: 0.42 } }, '选一个本地 git 仓库，自动登记为项目')),
+        
+        h(Step, { no: 2, label: '本地项目', on: true },
+          h('div', { style: S.field },
+            h('span', { style: { opacity: 0.5 } }, '📁'),
+            h('span', {
+              style: { flex: 1, minWidth: 0, wordBreak: 'break-all', fontSize: 12, opacity: projectPath ? 0.9 : 0.45 },
+            }, projectPath || '未选择项目'),
+            h('button', { style: S.smBtn, onClick: pickLocalProject }, '选择项目')),
+          recentNames.length
+            ? h('div', { style: S.inline },
+                h('span', { style: { fontSize: 11, opacity: 0.55 } }, '最近：'),
+                recentNames.map((name) => projectChip(name)))
+            : null,
+          otherNames.length
+            ? h('div', { style: S.inline },
+                h('span', { style: { fontSize: 11, opacity: 0.55 } }, '项目：'),
+                otherNames.map((name) => projectChip(name)))
+            : null,
+          v.pickError ? h('div', { style: S.warn }, v.pickError) : null),
+        h(Step, { no: 3, label: '分支', on: true },
           h('div', { style: S.inline },
             h('span', { style: { fontSize: 11, opacity: 0.5 } }, '基于'),
             branchChoices.length
@@ -474,11 +626,25 @@ window.__ModuleLoader__.load({
           br.status === 'error' ? h('div', { style: S.warn }, br.error) : null,
           br.blocking.length
             ? h('div', { style: S.warn },
-                '工作区有 ' + String(br.blocking.length) + ' 个已跟踪文件改动，会拒绝切分支：' + br.blocking.slice(0, 3).join(' ; '))
+                '工作区有 ' + String(br.blocking.length) + ' 个已跟踪文件改动，默认会拒绝切分支：' + br.blocking.slice(0, 3).join(' ; '),
+                h('label', { style: { display: 'flex', gap: 6, alignItems: 'flex-start', marginTop: 6, cursor: 'pointer', fontWeight: 400 } },
+                  h('input', {
+                    type: 'checkbox', checked: Boolean(v.allowDirty),
+                    onChange: (e) => setV(Object.assign({}, v, { allowDirty: e.target.checked })),
+                  }),
+                  h('span', {}, '带着这些改动一起切分支（不会丢弃任何改动；git 遇到冲突会直接报错）')))
             : null),
-        h(Step, { no: 4, label: '创建分支并开始', on: true },
+        h(Step, { no: 4, label: '部署前置', on: true },
           h('div', { style: Object.assign({}, S.note, { marginTop: 0, fontSize: 12 }) },
             '会在 ' + (projectName || '项目') + ' 仓库里真的基于「' + (v.base || '当前分支') + '」创建分支，并在 DSH 里新开一个对话。'),
+          h('div', { style: S.field },
+            h('span', { style: { opacity: 0.5 } }, 'Jenkins'),
+            h('input', {
+              style: S.bare, value: v.jenkinsJob,
+              placeholder: (props.projects.find((p) => p.name === projectName) || {}).jenkins || 'Jenkins job 名，如 tongxi-test（可留空）',
+              onChange: set('jenkinsJob'),
+            })),
+          h('div', { style: S.note }, '每个项目的 Jenkins job 名都不一样。留空则用 config.json 里该项目的配置；填了就只对这个需求生效。'),
           h('div', { style: S.wizfoot },
             h('button', { style: Object.assign({}, S.primary, props.busy ? { opacity: 0.5 } : null), disabled: props.busy, onClick: submit },
               props.busy ? '创建中…' : '创建分支并新建会话'),
@@ -502,8 +668,48 @@ window.__ModuleLoader__.load({
 
       useEffect(() => { load() }, [load])
 
-      const post = useCallback((action, extra) => {
-        setBusy(action)
+    // A failed action carries its reason in `error`, or — for a check run — in
+    // summary plus the per-project details. Showing a bare "执行失败" throws the
+    // one piece of information the user needs.
+    const failureText = (body) => {
+      const err = body && body.error
+      if (err) return String(err.code || 'ERROR') + ' · ' + String(err.message || '')
+      const summary = String((body && body.summary) || '').trim()
+      const data = (body && body.data) || {}
+      const lines = []
+      if (summary) lines.push(summary)
+      const details = data.details && typeof data.details === 'object' ? data.details : null
+      if (details) {
+        for (const name of Object.keys(details)) {
+          const record = details[name] || {}
+          const checks = Array.isArray(record.checks) ? record.checks : []
+          for (const check of checks) {
+            if (check.passed) continue
+            lines.push('')
+            lines.push('【' + name + ' / ' + (check.name || check.run || 'check') + '】' +
+              (check.timedOut ? '超时' : '退出码 ' + check.code))
+            const out = String(check.output || '').trim()
+            if (out) lines.push(out.slice(-900))
+          }
+          if (record.checksNote) {
+            lines.push('')
+            lines.push('【' + name + '】' + record.checksNote)
+          }
+          if (record.branchOk === false) {
+            lines.push('')
+            lines.push('【' + name + '】分支不对：当前 ' + (record.currentBranch || '?') + '，应为 ' + (record.branch || '?'))
+          }
+          const secrets = record.secrets
+          if (secrets && secrets.clean === false) {
+            lines.push('')
+            lines.push('【' + name + '】疑似密钥：' + (Array.isArray(secrets.hits) ? secrets.hits.join(', ') : String(secrets.hits)))
+          }
+        }
+      }
+      return lines.join('\n') || '执行失败（宿主没有返回原因）'
+    }
+      const post = useCallback((action, extra, runId) => {
+        setBusy(runId ? action + ':' + runId : action)
         return fetch('/delivery/api/action', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -514,10 +720,21 @@ window.__ModuleLoader__.load({
             const failed = !res.ok || res.body.ok === false
             const err = res.body && res.body.error
             if (failed) {
-              setNote({ kind: 'error', text: err ? ((err.code || 'ERROR') + ' · ' + (err.message || '')) : '执行失败' })
+              setNote({ kind: 'error', text: failureText(res.body) })
             } else {
               setNote({ kind: 'ok', text: String((res.body && res.body.summary) || '已完成') })
-              const created = res.body && res.body.data && res.body.data.sessionId
+              // Only `new` opens a conversation. remove/close/verify return no
+              // session id, and claiming they "failed to open a session" turns a
+              // successful delete into an error message.
+              const created = action === 'new' ? (res.body && res.body.data && res.body.data.sessionId) : null
+              // Creating a delivery is not the same as opening its conversation.
+              // Report why the jump did not happen instead of leaving the page looking
+              // as though nothing was supposed to occur.
+              const payload = (res.body && res.body.data) || {}
+              if (action === 'new' && !created) {
+                const why = payload.sessionError || payload.workspaceWarning || '宿主没有返回会话 id'
+                setNote({ kind: 'error', text: '交付已创建，但没有打开开发会话：' + why })
+              }
               if (created) {
                 // Land in the conversation the delivery just opened. A missing
                 // service leaves the user on this page with the session id.
@@ -544,7 +761,7 @@ window.__ModuleLoader__.load({
           .finally(() => setBusy(''))
       }, [load])
 
-      const onAction = (action, run) => post(action, { run: run.id })
+      const onAction = (action, run, extra) => post(action, Object.assign({ run: run.id }, extra || {}), run.id)
 
       const data = state.data || {}
       const projects = projectList(data.config && data.config.projects)
@@ -575,6 +792,7 @@ window.__ModuleLoader__.load({
           }, note.text) : null,
           creating ? h(Wizard, {
             projects: projects,
+            runs: runs,
             envs: envs,
             busy: busy === 'new',
             onWarn: (text) => setNote({ kind: 'error', text: text }),
