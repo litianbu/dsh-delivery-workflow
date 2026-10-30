@@ -177,7 +177,7 @@ export function apply(ctx) {
   ctx.tools.register({
     name: 'delivery',
     description:
-      'Operate a software delivery workflow for one requirement: intake, multi-project init, verification, Jenkins build, and Kubernetes deploy. Start with doctor and create a run with new; later actions need the run id. Verification is an optional self-check and does not gate build, and a prod deploy requires confirm="DEPLOY prod <project> <tag>".',
+      'Operate a software delivery workflow for one requirement: intake, multi-project init, verification, Jenkins build, and Kubernetes deploy. Start with doctor and create a run with new; later actions need the run id. Verification is an optional self-check and does not gate build, and a prod deploy requires confirm="DEPLOY prod <project> <tag>". If the working directory or one of its parents contains a .delivery/runs/ directory, this workspace is managed by the delivery workflow: each run already stores its requirement text in .delivery/runs/<run-id>/spec/requirement.md, and run.json in the same directory records the title and requirement.docUrl. When the user refers to "the requirement" or asks to start on it, read that file directly and never ask the user to paste the Feishu link.',
     timeoutMs: 900_000,
     isConcurrencySafe: () => false,
     parameters,
