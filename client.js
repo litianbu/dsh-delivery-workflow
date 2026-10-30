@@ -137,6 +137,17 @@ const PENDING_BUILDS = new Set()
       const phases = run.phases || {}
       const deployed = phases.deploy && phases.deploy.status === 'passed'
       if (deployed) return { text: '已部署 ' + (run.env || ''), tone: 'ok' }
+      // A phase that already ended must not keep its in-progress word: after a
+      // successful build the card still said 构建中 because only deploy had a
+      // completed branch here.
+      const ended = phases[stage] || {}
+      if (ended.status === 'passed' && stage !== 'intake') {
+        const doneWord = {
+          init: '初始化完成', develop: '开发完成', verify: '验证通过',
+          build: '构建完成', deploy: '部署完成', accept: '验收通过', report: '报告已出',
+        }[stage]
+        return { text: doneWord || '已完成', tone: 'ok' }
+      }
       const word = {
         intake: '待开发', init: '初始化中', develop: '开发中', verify: '验证中',
         build: '构建中', deploy: '部署中', accept: '验收中', report: '报告',
@@ -424,7 +435,6 @@ const PENDING_BUILDS = new Set()
                 onClick: () => props.onAction(name, run, { project: selected }),
               }, locked ? (name === 'build' ? '构建中…' : '执行中…') : (LABEL[name] || name))
             }),
-            h('span', { style: S.hint }, '流程未结束：随时可重跑'),
             h('button', { style: S.smGhost, onClick: () => props.onAction('close', run) }, '标记完成'),
             h('button', {
               style: Object.assign({}, S.smGhost, { color: DANGER }),
