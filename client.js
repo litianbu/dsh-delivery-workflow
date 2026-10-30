@@ -241,7 +241,12 @@ const PENDING_BUILDS = new Set()
     // text against the configured markers and decides pass or fail from that.
     function DeployPanel(props) {
       const run = props.run
-      const plan = run.deployPlan && run.deployPlan[run.env || 'test']
+      const env = run.env || 'test'
+      const projects = Array.isArray(run.projects) ? run.projects : []
+      // Plans are stored per project so two notebook deploys in one run keep
+      // their own command. Old single-project runs only have deployPlan[env].
+      const plan = (run.deployPlans && run.deployPlans[props.project] && run.deployPlans[props.project][env])
+        || (projects.length === 1 && run.deployPlan ? run.deployPlan[env] : null)
       const [out, setOut] = useState('')
       const [copied, setCopied] = useState('')
       if (!plan || !plan.command) return null
@@ -260,7 +265,7 @@ const PENDING_BUILDS = new Set()
       }
       const submit = () => {
         if (!text.trim()) return
-        props.onAction('deploy', run, { output: text, env: run.env || 'test' })
+        props.onAction('deploy', run, { output: text, env: env, project: props.project })
       }
       return h('div', {
         style: {
@@ -306,13 +311,21 @@ const PENDING_BUILDS = new Set()
     function RunCard(props) {
       const run = props.run
       const stage = stageOf(run)
+      const projects = Array.isArray(run.projects) ? run.projects : []
+      // A multi-project run merges, builds and deploys one project at a time;
+      // the chips pick which one the two buttons act on. Single-project runs
+      // keep the selected value implicit and look exactly as before.
+      const [project, setProject] = useState(projects[0] || '')
+      const selected = projects.includes(project) ? project : (projects[0] || '')
+      const multi = projects.length > 1
+      const buildRecord = run.builds && run.builds[selected] ? run.builds[selected] : (projects.length === 1 ? run.build : null)
+      const merging = props.busy === 'merge:' + run.id
       // Archived runs start collapsed: the archive only grows, and dozens of
       // expanded cards would bury the live work above them.
       const [open, setOpen] = useState(stage !== 'closed')
       const requirement = requirementOf(run)
       const badge = badgeOf(run, stage)
       const docs = docsOf(run)
-      const projects = Array.isArray(run.projects) ? run.projects : []
       const live = stage !== 'closed'
       return h('div', { style: Object.assign({}, S.card, { opacity: live ? 1 : 0.72 }) },
         h('div', { style: S.top, onClick: () => setOpen(!open) },
@@ -341,10 +354,16 @@ const PENDING_BUILDS = new Set()
             h('span', null, '项目 ', h('code', { style: S.code }, projects.join(', ') || '-')),
             h('span', null, '分支 ', h('code', { style: S.code }, run.branch || '-')),
             h('span', null, '环境 ', h('code', { style: S.code }, run.env || '-')),
+            run.merges && run.merges[selected] ? h('span', null, '合并 ',
+              h('code', { style: S.code },
+                (run.merges[selected].target || '-') + ' ' +
+                (run.merges[selected].status === 'merged' ? '已合并'
+                  : run.merges[selected].status === 'noop' ? '已包含'
+                    : '待处理'))) : null,
             run.sessionId ? h('span', null, '会话 ', h('code', { style: S.code }, run.sessionId)) : null,
             stage === 'closed' && run.closedAt ? h('span', null, String(run.closedAt).slice(0, 10) + ' 手动标记完成') : null),
           h(Timeline, { run: run, stage: stage }),
-          h(DeployPanel, { run: run, busy: props.busy === 'deploy:' + run.id, onAction: props.onAction }),
+          h(DeployPanel, { run: run, project: selected, busy: props.busy === 'deploy:' + run.id + ':' + selected, onAction: props.onAction }),
           live ? h('div', { style: S.actions },
             // The run already owns a conversation: this is the way back into it,
             // so in-progress work continues instead of being re-described.
@@ -355,19 +374,40 @@ const PENDING_BUILDS = new Set()
                 openRunSession(run.sessionId)
               },
             }, '打开开发会话') : null,
+            multi ? h('span', { style: { display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' } },
+              h('span', { style: S.hint }, '项目'),
+              projects.map((name) => h('button', {
+                key: name,
+                style: Object.assign({}, S.sm, { fontSize: 11, padding: '4px 8px' },
+                  name === selected ? { borderColor: ACCENT, color: ACCENT, fontWeight: 600 } : { opacity: 0.6 }),
+                onClick: (event) => { if (event && event.stopPropagation) event.stopPropagation(); setProject(name) },
+              }, name))) : null,
+            // Merging is a separate step before the build: the image is fixed at
+            // build time, so a merge performed during deploy could never reach
+            // it. It merges every project into its own env branch and pushes; a
+            // conflict is left in the working tree for a human.
+            h('button', {
+              style: Object.assign({}, S.sm, { fontWeight: 500 }, merging ? { opacity: 0.5 } : null),
+              disabled: merging,
+              title: '把当前分支合并到每个项目自己的环境分支并 push；冲突会留在工作区等待手工解决',
+              onClick: () => props.onAction('merge', run),
+            }, merging ? '合并中…' : '合并'),
             OPS.map((name) => {
-              const busyKey = props.busy === name + ':' + run.id
-              // The run's build phase is the source of truth for "building": it
-              // survives a refresh and only clears when Jenkins reports success
-              // or failure, so a click can never start a second build on top of
-              // a running one.
-              const building = name === 'build' && Boolean(run.phases && run.phases.build && run.phases.build.status === 'running')
+              const busyKey = props.busy === name + ':' + run.id + ':' + selected
+              // The per-project build state is the source of truth for
+              // "building": it survives a refresh and only clears when Jenkins
+              // reports success or failure, so a click can never start a second
+              // build on top of a running one. Old runs only have run.build and
+              // the phase.
+              const building = name === 'build' && (buildRecord
+                ? ['running', 'queued', 'started'].includes(buildRecord.status)
+                : Boolean(run.phases && run.phases.build && run.phases.build.status === 'running'))
               const locked = busyKey || building
               return h('button', {
                 key: name,
                 style: Object.assign({}, S.sm, locked ? { opacity: 0.5 } : null),
                 disabled: locked,
-                onClick: () => props.onAction(name, run),
+                onClick: () => props.onAction(name, run, { project: selected }),
               }, locked ? (name === 'build' ? '构建中…' : '执行中…') : (LABEL[name] || name))
             }),
             h('span', { style: S.hint }, '流程未结束：随时可重跑'),
@@ -768,15 +808,19 @@ const PENDING_BUILDS = new Set()
     }
       const post = useCallback((action, extra, runId, options) => {
         const silent = Boolean(options && options.silent)
-        const busyKey = runId ? action + ':' + runId : action
+        // A multi-project run builds and deploys one project at a time, so the
+        // lock key carries the project: building alpha must not lock beta.
+        const projectKey = extra && extra.project ? ':' + extra.project : ''
+        const busyKey = runId ? action + ':' + runId + projectKey : action
+        const buildKey = runId ? runId + projectKey : ''
         // A click on 构建 while Jenkins is still building is refused rather than
         // queued: the button is locked until the build reports success or
         // failure. Background polls pass silent and are exempt.
-        if (!silent && action === 'build' && runId && PENDING_BUILDS.has(runId)) {
+        if (!silent && action === 'build' && runId && PENDING_BUILDS.has(buildKey)) {
           setNote({ kind: 'ok', text: '构建还在进行中（Jenkins 尚未返回结果），结束后才能再次点击。' })
           return Promise.resolve({ ok: false, body: null, refused: true })
         }
-        if (!silent && action === 'build' && runId) PENDING_BUILDS.add(runId)
+        if (!silent && action === 'build' && runId) PENDING_BUILDS.add(buildKey)
         if (!silent) setBusy(busyKey)
         return fetch('/delivery/api/action', {
           method: 'POST',
@@ -818,7 +862,7 @@ const PENDING_BUILDS = new Set()
           })
           .finally(() => {
             if (!silent) {
-              if (action === 'build' && runId) PENDING_BUILDS.delete(runId)
+              if (action === 'build' && runId) PENDING_BUILDS.delete(buildKey)
               setBusy('')
             }
           })
@@ -830,23 +874,27 @@ const PENDING_BUILDS = new Set()
       // button unlock by itself instead of pinning the page to one long request.
       const buildWatch = useRef({})
 
-      const stopWatch = useCallback((runId) => {
-        const timer = buildWatch.current[runId]
+      const stopWatch = useCallback((key) => {
+        const timer = buildWatch.current[key]
         if (timer) {
           clearTimeout(timer)
-          delete buildWatch.current[runId]
+          delete buildWatch.current[key]
         }
       }, [])
 
-      const watchBuild = useCallback((runId, hint) => {
-        if (buildWatch.current[runId]) return
+      const watchBuild = useCallback((runId, hint, project) => {
+        // Watches are keyed by project too: a multi-project run can have two
+        // Jenkins builds in flight, each tracked by its own build URL.
+        const key = runId + (project ? ':' + project : '')
+        if (buildWatch.current[key]) return
         let next = hint || {}
         let misses = 0
         const tick = () => {
-          buildWatch.current[runId] = setTimeout(() => {
-            delete buildWatch.current[runId]
+          buildWatch.current[key] = setTimeout(() => {
+            delete buildWatch.current[key]
             // pollOnly tells the host to observe, never to start another build.
             const extra = { run: runId, waitSeconds: 0, pollOnly: true }
+            if (project) extra.project = project
             if (next.buildUrl) extra.buildUrl = next.buildUrl
             if (next.queueUrl) extra.queueUrl = next.queueUrl
             post('build', extra, runId, { silent: true }).then((out) => {
@@ -874,14 +922,25 @@ const PENDING_BUILDS = new Set()
       useEffect(() => {
         const list = (state.data && state.data.runs) || []
         list.forEach((run) => {
-          if (run.phases && run.phases.build && run.phases.build.status === 'running') {
+          // Resume every in-flight project build after a refresh, not just the
+          // legacy single build stored on run.build.
+          const builds = run.builds && typeof run.builds === 'object' ? run.builds : {}
+          let watching = false
+          Object.keys(builds).forEach((project) => {
+            const record = builds[project]
+            if (record && ['running', 'queued', 'started'].includes(record.status)) {
+              watchBuild(run.id, record, project)
+              watching = true
+            }
+          })
+          if (!watching && run.phases && run.phases.build && run.phases.build.status === 'running') {
             watchBuild(run.id, run.build || {})
           }
         })
       }, [state.data, watchBuild])
 
       useEffect(() => () => {
-        Object.keys(buildWatch.current).forEach((runId) => stopWatch(runId))
+        Object.keys(buildWatch.current).forEach((key) => stopWatch(key))
       }, [stopWatch])
 
       const onAction = (action, run, extra) => {
@@ -894,8 +953,9 @@ const PENDING_BUILDS = new Set()
             const data = (out.body && out.body.data) || {}
             const status = data.status
             if (!status || status === 'running' || status === 'queued' || status === 'started') {
-              stopWatch(run.id)
-              watchBuild(run.id, data)
+              const key = run.id + (payload.project ? ':' + payload.project : '')
+              stopWatch(key)
+              watchBuild(run.id, data, payload.project)
             }
           }
           return out

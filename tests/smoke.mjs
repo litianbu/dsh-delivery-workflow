@@ -171,10 +171,14 @@ async function main() {
   )
   console.log('\n### build gate rejects an unmerged feature branch: ok')
 
-  sh('git checkout test', repo)
-  sh('git merge --ff-only feat/tongxi-1-fixture-change', repo)
-  sh('git push origin test', repo)
-  sh('git checkout feat/tongxi-1-fixture-change', repo)
+  // Merge is an explicit action now: it merges the feature branch into the
+  // project's own env branch and pushes, then restores the work tree.
+  const merged = await actions.merge({ workspace, run })
+  assert.equal(merged.ok, true, merged.summary)
+  assert.equal(merged.data.merges.fixture.target, 'test')
+  assert.equal(merged.data.merges.fixture.status, 'merged')
+  assert.equal(currentBranch(), 'feat/tongxi-1-fixture-change')
+  show('merge', merged)
   const sha = sh('git rev-parse --short=12 origin/test', repo)
 
   await assert.rejects(

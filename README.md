@@ -12,7 +12,8 @@
 - `phase`：记录每个阶段的通过/失败/阻塞和证据；`intake` 有未回答问题时不接受通过。
 - `init`：对单项目/多项目执行 fetch、切基线分支、创建统一 feature 分支、执行 setup；默认拒绝 dirty worktree，支持 dry-run 和 keep-going。
 - `verify`：按项目执行配置的检查命令和差异化密钥扫描（私钥、AK、GitHub/OpenAI token、硬编码密码），记录证据。
-- `build`：触发 Jenkins 参数化构建并轮询日志解析 tag；也支持手动记录已完成构建。记录前强制检查：
+- `merge`：把统一的 feature 分支合并进**每个项目自己的环境分支**，然后 push。目标分支只来自 `config.projects.<name>.envBranches[env]`，所以 A 项目合进 `test`、B 项目合进 `develop` 也不会合错。默认合并 run 里的所有项目（`keepGoing=true` 可在失败后继续）；冲突时停在目标分支的 merge 状态并保留冲突文件，交人工 `git add` + `git commit`，不执行 `merge --abort`、reset 或 force push。`push=false` 只做本地合并，不推送。
+- `build`：触发 Jenkins 参数化构建并轮询日志解析 tag；也支持手动记录已完成构建。不会隐式合并：feature 分支没合进构建分支时直接拒绝，并提示先执行 `merge`（页面上是「合并」按钮）。记录前强制检查：
   - 镜像 tag 的格式不做限制（`web-test-7a3c647`、`latest-test`、`test-0123456789ab-42` 都可以），只要求它没有写明一个与目标环境相反的环境；
   - tag 里带 commit 前缀时，该前缀必须等于构建分支 HEAD；
   - feature 分支必须已经合并进构建分支（`git merge-base --is-ancestor`）。
@@ -42,7 +43,7 @@
 在 DSH 中安装本地 bundle：
 
 ```text
-plugin_manager(action="install_bundle", target="/Users/runzhili/Desktop/dsh/delivery-workflow")
+plugin_manager(action="install_bundle", target="/Users/runzhili/Desktop/dsh-skill-hub/dsh-delivery-workflow")
 ```
 
 安装后新会话会看到 `delivery` 工具；先调用 `delivery action=doctor` 检查配置是否可读。插件是 Host-only 的，不需要前端构建，也不会新增页面。
@@ -58,6 +59,15 @@ cp /Users/runzhili/Desktop/dsh/delivery-workflow/config.example.json \
 ```
 
 把示例里的 `/absolute/path/to/tongxi-biomap` 换成真实路径，并补齐 Jenkins job 名、部署主机等。项目 `path` 可以是绝对路径，也可以相对工作区。
+
+每个项目用 `envBranches` 指定该环境对应的分支：`merge` 合并到这里，`build` 也从这里构建。项目之间可以不同，这正是不能写死 `test` 的原因：
+
+```json
+"projects": {
+  "tongxi-biomap": { "path": "~/Desktop/biomap/tongxi-biomap", "envBranches": { "test": "test", "prod": "main" } },
+  "biomap-huaxi-web": { "path": "~/Desktop/biomap/biomap-huaxi-web", "envBranches": { "test": "develop", "prod": "main" } }
+}
+```
 
 在 DSH 里把会话工作目录切到该工作区，或在每次调用时传 `workspace`：
 
@@ -156,7 +166,19 @@ prod 配置支持 `preview` / `apply` 两段式：先跑 preview，人工确认�
 { "action": "verify", "run": "20261027-173000-tongxi-123" }
 ```
 
-7. 把 feature 分支合并进 `test`/`main`，然后构建：
+7. 先合并，再构建。`merge` 按每个项目自己的环境分支合并并 push；构建阶段不接受未合并的分支：
+
+```json
+{ "action": "merge", "run": "20261027-173000-tongxi-123" }
+```
+
+多项目 run 默认一次合并所有项目。只合并其中一个，或某个项目需要单独处理时：
+
+```json
+{ "action": "merge", "run": "20261027-173000-tongxi-123", "project": "biomap-huaxi-web" }
+```
+
+冲突会留在目标分支的合并状态里。按错误信息解决冲突后执行 `git add` + `git commit`，再点一次「合并」即可完成推送；插件不会替你 abort 或丢改动。
 
 ```json
 { "action": "build", "run": "20261027-173000-tongxi-123", "waitSeconds": 180 }
@@ -204,7 +226,7 @@ prod 先 preview，再 apply：
 
 ## 安全边界
 
-- 不自动 push、merge、rollback；构建前只检查 feature 是否已合并。
+- `merge` 是唯一会写仓库并 push 的动作，只在显式调用时执行；`push=false` 可关闭推送。冲突不自动解决，也不会 `abort`/reset/stash/force push；`build`、`deploy` 不会隐式合并或推送。
 - 不执行 `git reset --hard`、`git clean -fd`，不删除用户改动；dirty worktree 默认拒绝初始化。
 - 构建产物 tag、SHA、环境、分支必须互相匹配；不匹配直接失败。
 - prod 部署必须传入精确的 `confirm` 字符串；prod preview 不需要该确认。
@@ -224,12 +246,19 @@ prod 先 preview，再 apply：
     spec/testcases.json
     init/<project>.json
     verify/<project>.json
+    merge.json
+    merge/<project>.json
     build.json
+    build/<project>.json
     deploy/test.json
+    deploy/<project>-test.json
     deploy/prod.json
+    deploy/<project>-prod.json
     deploy/prod-preview.json
     report.md
 ```
+
+单项目 run 沿用 `build.json`、`deploy/<env>.json`；多项目 run 每个项目各写一份 `build/<project>.json`、`deploy/<project>-<env>.json`，避免后一个项目覆盖前一个。
 
 会话绑定和 jenkins 凭据单独放在用户配置目录下，不属于任何工作区：
 
@@ -243,7 +272,7 @@ prod 先 preview，再 apply：
 
 - 飞书文档读取本身不在插件内：由 Agent 使用 DSH 浏览器工具在用户登录态下打开、滚动、抽取，再调用 `intake`。这样不需要应用凭证，也不把飞书 token 放进插件。
 - Kubeflow 适配器只预留了部署配置的接口位置；当前 pilot 的实际部署链路是 Jenkins 构建 + 集群侧 kubectl，未实现 Kubeflow Pipeline 调用。
-- 没有 Web UI。v1 先保证工具、状态和安全门可用；后续再按需要加看板。
+- Web 卡片界面（`client.js`）已提供「合并」「构建」「部署」按钮；多项目 run 先在卡片上选项目，再对选中项目构建/部署，每个项目独立忙碌状态和构建跟踪。
 - 多项目目前共用同一个 feature 分支名，每个项目的 run 状态独立记录；没有实现跨进程项目锁。
 
 ## 开发与自测
@@ -253,6 +282,8 @@ cd /Users/runzhili/Desktop/dsh/delivery-workflow
 for f in index.js lib/*.js; do node --check "$f"; done
 node tests/tool-wrapper.mjs   # 工具注册、execute、render 的封装层
 node tests/smoke.mjs          # 完整流程：在 /tmp 建临时 git fixture，跑完所有动作和安全门
+node tests/merge.mjs          # 合并：两个项目不同环境分支、dirty 拒绝、冲突留在工作区
+node tests/multi.mjs          # 多项目：逐项目构建/部署、tag 与部署记录不串项目
 ```
 
 插件的纯逻辑可以通过 `lib/actions.js` 直接调用（传 `{ workspace }`），不需要启动 DSH：

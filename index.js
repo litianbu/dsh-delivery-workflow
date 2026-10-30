@@ -9,7 +9,7 @@ export const name = 'delivery-workflow'
 // through a context-bound property read; see lib/context.js.
 export const inject = ['tools', 'workingDirectory', 'systemPrompt']
 
-const ACTIONS = ['doctor', 'new', 'intake', 'phase', 'init', 'verify', 'build', 'deploy', 'report', 'status', 'close', 'remove', 'doc']
+const ACTIONS = ['doctor', 'new', 'intake', 'phase', 'init', 'merge', 'verify', 'build', 'deploy', 'report', 'status', 'close', 'remove', 'doc']
 const PHASE_STATUSES = ['pending', 'running', 'passed', 'failed', 'blocked', 'skipped']
 
 const parameters = {
@@ -24,6 +24,7 @@ const parameters = {
         'doctor: check config, repos, git/ssh and credentials; new: create a run;',
         'intake: validate and save the normalized requirement and test cases;',
         'phase: record approval/status for a phase; init: fetch, checkout and prepare projects;',
+        'merge: merge the run branch into each project\'s own env branch and push it, before build;',
         'verify: run configured checks and a secret scan; build: trigger or record a Jenkins build;',
         'deploy: preview/apply an environment deploy and health check; report: write report.md;',
         'status: list runs or show one run;',
@@ -100,7 +101,7 @@ const parameters = {
     skipSetup: { type: 'boolean', description: 'init: skip the project setup commands.' },
     keepGoing: {
       type: 'boolean',
-      description: 'init: continue with the next project after a failure instead of stopping at the first one.',
+      description: 'init/merge: continue with the next project after a failure instead of stopping at the first one.',
     },
     allowDirty: {
       type: 'boolean',
@@ -109,7 +110,12 @@ const parameters = {
     },
     project: {
       type: 'string',
-      description: 'build/deploy: project name. Required when the run contains multiple projects.',
+      description: 'merge/build/deploy: project name. Required by build/deploy when the run contains multiple projects; merge defaults to every project in the run.',
+    },
+    push: {
+      type: 'boolean',
+      description:
+        'merge: push the merged target branch to origin (default true). Pass push=false only when a human will push; the build gate reads origin/<branch>, so an unpushed merge does not satisfy it.',
     },
     tag: {
       type: 'string',
@@ -180,7 +186,7 @@ export function apply(ctx) {
   ctx.tools.register({
     name: 'delivery',
     description:
-      'Operate a software delivery workflow for one requirement: intake, multi-project init, verification, Jenkins build, and Kubernetes deploy. Start with doctor and create a run with new; later actions need the run id. Verification is an optional self-check and does not gate build, and a prod deploy requires confirm="DEPLOY prod <project> <tag>". When this conversation was opened for a delivery run, the requirement document, local requirement text, branch and Jenkins job are already part of your context: use them directly and never ask the user to paste the Feishu link.',
+      'Operate a software delivery workflow for one requirement: intake, multi-project init, per-project merge into each environment branch, verification, Jenkins build, and Kubernetes deploy. Start with doctor and create a run with new; later actions need the run id. Verification is an optional self-check and does not gate build, and a prod deploy requires confirm="DEPLOY prod <project> <tag>". When this conversation was opened for a delivery run, the requirement document, local requirement text, branch and Jenkins job are already part of your context: use them directly and never ask the user to paste the Feishu link.',
     timeoutMs: 900_000,
     isConcurrencySafe: () => false,
     parameters,
