@@ -13,12 +13,29 @@
 - `init`：对单项目/多项目执行 fetch、切基线分支、创建统一 feature 分支、执行 setup；默认拒绝 dirty worktree，支持 dry-run 和 keep-going。
 - `verify`：按项目执行配置的检查命令和差异化密钥扫描（私钥、AK、GitHub/OpenAI token、硬编码密码），记录证据。
 - `build`：触发 Jenkins 参数化构建并轮询日志解析 tag；也支持手动记录已完成构建。记录前强制检查：
-  - 镜像 tag 必须匹配 `^(test|prod)-[0-9a-f]{12}-[0-9]+$`；
-  - tag 的 12 位 SHA 必须等于构建分支 HEAD；
+  - 镜像 tag 的格式不做限制（`web-test-7a3c647`、`latest-test`、`test-0123456789ab-42` 都可以），只要求它没有写明一个与目标环境相反的环境；
+  - tag 里带 commit 前缀时，该前缀必须等于构建分支 HEAD；
   - feature 分支必须已经合并进构建分支（`git merge-base --is-ancestor`）。
 - `deploy`：生成并执行部署命令（`ssh` / `local` / `notebook`），支持 test 直接部署、prod 的 preview/apply 两段式、健康检查、显式 rollback；没有部署主机时返回可直接复制的命令并标记 blocked，`notebook` 模式下返回 `status=manual` 和待粘贴命令。
 - `report`：把阶段、项目、构建、部署、测试用例和 open questions 写成 `report.md`。
 - `status`：查看最近 runs 或单个 run 的阶段表。
+
+### 开发会话里的需求上下文
+
+`new` 建 run 时会同时开一个开发会话。这个会话打开后是空的——不会有任何自动发送的消息，第一条发言仍然由你自己写。但这条会话的系统提示里已经带上了这次 run 的事实，所以你直接说「帮我分析需求」，模型就知道去哪里读：
+
+- 飞书需求文档地址；
+- 已落盘的 `spec/requirement.md`（模型应当直接读它，不必再问你或重新拉文档）；
+- 当前分支、参与的每个项目路径，以及各自 test/prod 的 Jenkins job 名。
+
+这些信息来自 run 的 `run.json` 和 `.delivery/config.json`，每次组装提示时重新读取，所以阶段、分支、job 变更后立刻生效。绑定关系单独存在 `~/.config/delivery-workflow/sessions.json`（只有 `{ workspace, runId }`，不含任何凭据），会话 id 到 run 的映射就来自它。
+
+`new` 的返回里带 `contextInjected`，摘要里也会显示 `run context loaded` 或 `WARNING: run context was NOT loaded`。看到这个警告说明这次注入没成功，会话本身仍然可用，只是模型不知道 run 的存在。
+
+注意两点：
+
+- 宿主侧的改动（含本节）要完全退出 DSH 再打开才生效，`Cmd+R` 不够；
+- 本功能上线之前建的旧 run 没有绑定记录，重新打开其会话不会注入。新建的需求不受影响。
 
 ## 安装
 
@@ -212,6 +229,14 @@ prod 先 preview，再 apply：
     deploy/prod.json
     deploy/prod-preview.json
     report.md
+```
+
+会话绑定和 jenkins 凭据单独放在用户配置目录下，不属于任何工作区：
+
+```text
+~/.config/delivery-workflow/
+  sessions.json   # 会话 id → { workspace, runId }，供开发会话注入需求上下文
+  jenkins.json    # Jenkins 凭据（权限 600）
 ```
 
 ## 暂未包含

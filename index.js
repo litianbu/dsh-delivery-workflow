@@ -114,7 +114,7 @@ const parameters = {
     tag: {
       type: 'string',
       description:
-        'build/deploy: image tag matching ^(test|prod)-[0-9a-f]{12}-[0-9]+$. For build, records a completed Jenkins build only after checking the feature branch is merged and the SHA prefix matches the build branch head.',
+        'build/deploy: the image tag, exactly as the build produced it — for example web-test-7a3c647, latest-test or test-0123456789ab-42. Any format is accepted; a tag that names an environment different from the one being deployed is rejected. For build, records a completed Jenkins build only after checking the feature branch is merged and any commit prefix matches the build branch head.',
     },
     manual: {
       type: 'boolean',
