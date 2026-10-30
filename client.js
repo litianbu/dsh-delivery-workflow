@@ -362,6 +362,20 @@ const PENDING_BUILDS = new Set()
                     : '待处理'))) : null,
             run.sessionId ? h('span', null, '会话 ', h('code', { style: S.code }, run.sessionId)) : null,
             stage === 'closed' && run.closedAt ? h('span', null, String(run.closedAt).slice(0, 10) + ' 手动标记完成') : null),
+          // The run's own action result lives here instead of at the top of the
+          // page: an error about THIS build belongs next to THIS card.
+          props.note ? h('div', {
+            style: {
+              marginTop: 8, padding: '8px 10px', borderRadius: 8, fontSize: 12, whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word', maxHeight: 150, overflow: 'auto',
+              border: '1px solid ' + (props.note.kind === 'error'
+                ? 'rgba(220,38,38,.45)'
+                : (props.note.kind === 'warn' ? 'rgba(217,119,6,.45)' : BORDER)),
+              background: props.note.kind === 'error'
+                ? 'rgba(220,38,38,.08)'
+                : (props.note.kind === 'warn' ? 'rgba(217,119,6,.08)' : 'transparent'),
+            },
+          }, String(props.note.text)) : null,
           h(Timeline, { run: run, stage: stage }),
           h(DeployPanel, { run: run, project: selected, busy: props.busy === 'deploy:' + run.id + ':' + selected, onAction: props.onAction }),
           live ? h('div', { style: S.actions },
@@ -806,6 +820,22 @@ const PENDING_BUILDS = new Set()
       }
       return lines.join('\n') || '执行失败（宿主没有返回原因）'
     }
+      // Action results belong to the run they acted on. The page top used to
+      // echo every summary (merge tables, build errors), which buried the list.
+      const [notes, setNotes] = useState({})
+      const setRunNote = (runId, entry) => {
+        if (!runId) {
+          setNote(entry)
+          return
+        }
+        setNotes((prev) => {
+          const next = Object.assign({}, prev)
+          if (entry) next[runId] = entry
+          else delete next[runId]
+          return next
+        })
+      }
+
       const post = useCallback((action, extra, runId, options) => {
         const silent = Boolean(options && options.silent)
         // A multi-project run builds and deploys one project at a time, so the
@@ -817,7 +847,7 @@ const PENDING_BUILDS = new Set()
         // queued: the button is locked until the build reports success or
         // failure. Background polls pass silent and are exempt.
         if (!silent && action === 'build' && runId && PENDING_BUILDS.has(buildKey)) {
-          setNote({ kind: 'ok', text: '构建还在进行中（Jenkins 尚未返回结果），结束后才能再次点击。' })
+          setRunNote(runId, { kind: 'warn', text: '构建还在进行中（Jenkins 尚未返回结果），结束后才能再次点击。' })
           return Promise.resolve({ ok: false, body: null, refused: true })
         }
         if (!silent && action === 'build' && runId) PENDING_BUILDS.add(buildKey)
@@ -832,9 +862,11 @@ const PENDING_BUILDS = new Set()
             const failed = !res.ok || res.body.ok === false
             const err = res.body && res.body.error
             if (failed) {
-              setNote({ kind: 'error', text: failureText(res.body) })
+              if (!silent) setRunNote(runId, { kind: 'error', text: failureText(res.body) })
             } else {
-              setNote({ kind: 'ok', text: String((res.body && res.body.summary) || '已完成') })
+              // Success is already visible in the run's own state (phase, tag,
+              // build record); echoing the summary at the top was pure noise.
+              if (!silent) setRunNote(runId, null)
               // `new` returns a session id once the delivery conversation exists. A
               // missing id means the record was created without one, which is
               // worth surfacing instead of silently showing a run card.
@@ -981,12 +1013,11 @@ const PENDING_BUILDS = new Set()
             h('span', { style: S.ws }, '工作区 · ' + name),
             h('button', { style: S.primary, onClick: () => setCreating(!creating) },
               creating ? '收起向导' : '+ 新建需求')),
-          note ? h('div', {
+          creating && note ? h('div', {
             style: {
               fontSize: 12, padding: '9px 12px', borderRadius: 8, marginBottom: 12, whiteSpace: 'pre-line',
               border: '1px solid ' + (note.kind === 'error' ? 'rgba(220,38,38,.45)' : BORDER),
               background: note.kind === 'error' ? 'rgba(220,38,38,.08)' : 'transparent',
-              opacity: note.kind === 'error' ? 1 : 0.72,
             },
           }, note.text) : null,
           creating ? h(Wizard, {
@@ -1002,11 +1033,11 @@ const PENDING_BUILDS = new Set()
           }) : null,
           h('div', { style: S.sectionhead }, '进行中 ', h('span', { style: S.count }, String(active.length))),
           active.length
-            ? active.map((r) => h(RunCard, { key: r.id, run: r, onAction: onAction, busy: busy }))
+            ? active.map((r) => h(RunCard, { key: r.id, run: r, onAction: onAction, busy: busy, note: notes[r.id] || null }))
             : h('div', { style: S.empty }, loading ? '加载中…' : '还没有进行中的交付。点右上角「+ 新建需求」。'),
           done.length ? h('div', null,
             h('div', { style: S.sectionhead }, '已完成 ', h('span', { style: S.count }, String(done.length))),
-            done.map((r) => h(RunCard, { key: r.id, run: r, onAction: onAction, busy: '' }))) : null,
+            done.map((r) => h(RunCard, { key: r.id, run: r, onAction: onAction, busy: '', note: notes[r.id] || null }))) : null,
           h('div', { style: S.sectionhead }, '环境', h('span', { style: S.count }, state.error ? '接口异常' : '')),
           checks.length
             ? checks.map((c) => h('div', { key: c.name, style: { display: 'flex', gap: 10, fontSize: 12, padding: '2px 0', opacity: 0.72 } },
