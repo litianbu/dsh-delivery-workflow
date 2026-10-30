@@ -866,7 +866,19 @@ const PENDING_BUILDS = new Set()
             } else {
               // Success is already visible in the run's own state (phase, tag,
               // build record); echoing the summary at the top was pure noise.
-              if (!silent) setRunNote(runId, null)
+              // A cancelled/superseded/stale build is the exception: it needs a
+              // card warning so the user knows to click 构建 again.
+              if (!silent) {
+                const resultData = (res.body && res.body.data) || {}
+                if (action === 'build' && (resultData.status === 'aborted' || resultData.status === 'stale')) {
+                  setRunNote(runId, {
+                    kind: 'warn',
+                    text: String((res.body && res.body.summary) || '构建未完成，请重新点「构建」。'),
+                  })
+                } else {
+                  setRunNote(runId, null)
+                }
+              }
               // `new` returns a session id once the delivery conversation exists. A
               // missing id means the record was created without one, which is
               // worth surfacing instead of silently showing a run card.
