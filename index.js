@@ -5,7 +5,9 @@ import { PHASES } from './lib/run.js'
 import { limitText, redact } from './lib/util.js'
 
 export const name = 'delivery-workflow'
-export const inject = ['tools', 'workingDirectory']
+// `systemPrompt` is declared so the agent-scoped section can be registered
+// through a context-bound property read; see lib/context.js.
+export const inject = ['tools', 'workingDirectory', 'systemPrompt']
 
 const ACTIONS = ['doctor', 'new', 'intake', 'phase', 'init', 'verify', 'build', 'deploy', 'report', 'status', 'close', 'remove', 'doc']
 const PHASE_STATUSES = ['pending', 'running', 'passed', 'failed', 'blocked', 'skipped']

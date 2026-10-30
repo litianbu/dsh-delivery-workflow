@@ -81,3 +81,22 @@ test('only a bound conversation receives the section', async () => {
 test('a harness without an event bus does not fail activation', () => {
   assert.doesNotThrow(() => registerDeliveryContext({}))
 })
+
+test('a get()-only handle registers nothing, so no run leaks globally', async () => {
+  // `section()` binds through `this.ctx`, so a service reached with get()
+  // carries the global context. Passing one must be treated as no prompt.
+  const sections = []
+  const globalish = { get: (name) => (name === 'systemPrompt' ? { section: (v) => sections.push(v) } : null) }
+  let handler = null
+  registerDeliveryContext({ on: (event, fn) => { if (event === 'agent/created') handler = fn } })
+  await handler.call(globalish, { agent: { session: 'sess-1' } })
+  assert.equal(sections.length, 0)
+})
+
+test('a binding that never became a conversation can be dropped', () => {
+  const { forgetSession } = ctxModule
+  rememberSession('sess-abandoned', { workspace, runId })
+  assert.notEqual(recallSession('sess-abandoned'), null)
+  forgetSession('sess-abandoned')
+  assert.equal(recallSession('sess-abandoned'), null)
+})
