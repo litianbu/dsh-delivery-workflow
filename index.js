@@ -1,4 +1,5 @@
 import { actions } from './lib/actions.js'
+import { registerDeliveryContext } from './lib/context.js'
 import { mountDeliveryApi } from './lib/api.js'
 import { PHASES } from './lib/run.js'
 import { limitText, redact } from './lib/util.js'
@@ -177,7 +178,7 @@ export function apply(ctx) {
   ctx.tools.register({
     name: 'delivery',
     description:
-      'Operate a software delivery workflow for one requirement: intake, multi-project init, verification, Jenkins build, and Kubernetes deploy. Start with doctor and create a run with new; later actions need the run id. Verification is an optional self-check and does not gate build, and a prod deploy requires confirm="DEPLOY prod <project> <tag>". If the working directory or one of its parents contains a .delivery/runs/ directory, this workspace is managed by the delivery workflow: each run already stores its requirement text in .delivery/runs/<run-id>/spec/requirement.md, and run.json in the same directory records the title and requirement.docUrl. When the user refers to "the requirement" or asks to start on it, read that file directly and never ask the user to paste the Feishu link.',
+      'Operate a software delivery workflow for one requirement: intake, multi-project init, verification, Jenkins build, and Kubernetes deploy. Start with doctor and create a run with new; later actions need the run id. Verification is an optional self-check and does not gate build, and a prod deploy requires confirm="DEPLOY prod <project> <tag>". When this conversation was opened for a delivery run, the requirement document, local requirement text, branch and Jenkins job are already part of your context: use them directly and never ask the user to paste the Feishu link.',
     timeoutMs: 900_000,
     isConcurrencySafe: () => false,
     parameters,
@@ -202,6 +203,7 @@ export function apply(ctx) {
     },
   })
   ctx.logger?.info?.('delivery-workflow: registered the delivery tool')
+  registerDeliveryContext(ctx)
 
   // Optional service: the Web page talks over HTTP. A CLI-only profile has no
   // web server, so the routes are skipped there instead of blocking activation.
