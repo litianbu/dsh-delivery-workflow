@@ -148,6 +148,15 @@ const PENDING_BUILDS = new Set()
         }[stage]
         return { text: doneWord || '已完成', tone: 'ok' }
       }
+      // A phase that stopped without succeeding must not wear the in-progress
+      // word either: an unreachable or timed-out build showed 构建中 for ever.
+      if (ended.status === 'failed' || ended.status === 'blocked') {
+        const stuckWord = {
+          build: ended.status === 'failed' ? '构建失败' : '构建待确认',
+          deploy: '部署失败', verify: '验证失败', init: '初始化失败', develop: '开发受阻',
+        }[stage]
+        return { text: stuckWord || (ended.status === 'failed' ? '失败' : '已阻塞'), tone: 'plain' }
+      }
       const word = {
         intake: '待开发', init: '初始化中', develop: '开发中', verify: '验证中',
         build: '构建中', deploy: '部署中', accept: '验收中', report: '报告',
