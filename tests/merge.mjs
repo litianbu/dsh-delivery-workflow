@@ -136,7 +136,7 @@ async function main() {
   console.log('### second merge is a no-op: ok')
 
   const persisted = await loadRun(workspace, runId)
-  assert.equal(persisted.merges.alpha.status, 'noop')
+  assert.equal(persisted.merges.alpha.test.status, 'noop')
   assert.ok(fs.existsSync(path.join(workspace, '.delivery', 'runs', runId, 'merge.json')))
   assert.ok(fs.existsSync(path.join(workspace, '.delivery', 'runs', runId, 'merge', 'alpha.json')))
 

@@ -135,7 +135,7 @@ const PENDING_BUILDS = new Set()
       return last || 'intake'
     }
 
-    function badgeOf(run, stage) {
+    function badgeOf(run, stage, buildRecord) {
       if (stage === 'closed') return { text: '已归档', tone: 'plain' }
       const phases = run.phases || {}
       const deployed = phases.deploy && phases.deploy.status === 'passed'
@@ -145,6 +145,9 @@ const PENDING_BUILDS = new Set()
       // completed branch here.
       const ended = phases[stage] || {}
       if (ended.status === 'passed' && stage !== 'intake') {
+        // Build history is per environment: a build that finished on test must
+        // not make the card claim the prod side was built after a switch.
+        if (stage === 'build' && !(buildRecord && buildRecord.tag)) return { text: '待构建', tone: 'plain' }
         const doneWord = {
           init: '初始化完成', develop: '开发完成', verify: '验证通过',
           build: '构建完成', deploy: '部署完成', accept: '验收通过', report: '报告已出',
@@ -331,6 +334,32 @@ const PENDING_BUILDS = new Set()
         }, props.busy ? '记录中…' : '记录执行结果'))
     }
 
+    /**
+     * The build record of one project for the environment the card acts on.
+     * Builds are stored per environment, so after a switch the other side's
+     * finished build must not be shown as this one's; older runs kept one flat
+     * record per project and are treated as belonging to the current env.
+     */
+    function buildRecordOf(run, project) {
+      const wanted = run.env || 'test'
+      const entry = run.builds && run.builds[project]
+      if (entry && typeof entry === 'object') {
+        if (entry.tag || entry.status || entry.buildUrl) return (entry.env || wanted) === wanted ? entry : null
+        return entry[wanted] || null
+      }
+      if (run.build && (run.projects || []).length === 1) return (run.build.env || wanted) === wanted ? run.build : null
+      return null
+    }
+
+    /** The merge record of one project for the environment the card acts on. */
+    function mergeRecordOf(run, project) {
+      const wanted = run.env || 'test'
+      const entry = run.merges && run.merges[project]
+      if (!entry || typeof entry !== 'object') return null
+      if (entry.status || entry.target || entry.source) return entry
+      return entry[wanted] || null
+    }
+
     function RunCard(props) {
       const run = props.run
       const stage = stageOf(run)
@@ -341,13 +370,14 @@ const PENDING_BUILDS = new Set()
       const [project, setProject] = useState(projects[0] || '')
       const selected = projects.includes(project) ? project : (projects[0] || '')
       const multi = projects.length > 1
-      const buildRecord = run.builds && run.builds[selected] ? run.builds[selected] : (projects.length === 1 ? run.build : null)
+      const buildRecord = buildRecordOf(run, selected)
+      const mergeRecord = mergeRecordOf(run, selected)
       const merging = props.busy === 'merge:' + run.id
       // Archived runs start collapsed: the archive only grows, and dozens of
       // expanded cards would bury the live work above them.
       const [open, setOpen] = useState(stage !== 'closed')
       const requirement = requirementOf(run)
-      const badge = badgeOf(run, stage)
+      const badge = badgeOf(run, stage, buildRecord)
       const docs = docsOf(run)
       const live = stage !== 'closed'
       return h('div', { style: Object.assign({}, S.card, { opacity: live ? 1 : 0.72 }) },
@@ -376,12 +406,24 @@ const PENDING_BUILDS = new Set()
           h('div', { style: S.meta },
             h('span', null, '项目 ', h('code', { style: S.code }, projects.join(', ') || '-')),
             h('span', null, '分支 ', h('code', { style: S.code }, run.branch || '-')),
-            h('span', null, '环境 ', h('code', { style: S.code }, run.env || '-')),
-            run.merges && run.merges[selected] ? h('span', null, '合并 ',
+            h('span', null, '环境 ',
+              h('span', { style: { display: 'inline-flex', gap: 4 } },
+                ['test', 'prod'].map((name) => h('button', {
+                  key: name,
+                  style: Object.assign({}, S.sm, { fontSize: 11, padding: '2px 8px' },
+                    name === (run.env || 'test')
+                      ? { borderColor: ACCENT, color: ACCENT, fontWeight: 600 }
+                      : { opacity: 0.55 }),
+                  title: name === 'prod'
+                    ? '生产：合并/构建走 main 分支，部署需要先 preview 再 apply'
+                    : '测试：合并/构建走 test 分支',
+                  onClick: () => { if (name !== (run.env || 'test')) props.onAction('env', run, { env: name }) },
+                }, name)))),
+            mergeRecord ? h('span', null, '合并 ',
               h('code', { style: S.code },
-                (run.merges[selected].target || '-') + ' ' +
-                (run.merges[selected].status === 'merged' ? '已合并'
-                  : run.merges[selected].status === 'noop' ? '已包含'
+                (mergeRecord.target || '-') + ' ' +
+                (mergeRecord.status === 'merged' ? '已合并'
+                  : mergeRecord.status === 'noop' ? '已包含'
                     : '待处理'))) : null,
             run.sessionId ? h('span', null, '会话 ', h('code', { style: S.code }, run.sessionId)) : null,
             stage === 'closed' && run.closedAt ? h('span', null, String(run.closedAt).slice(0, 10) + ' 手动标记完成') : null),
@@ -1000,11 +1042,16 @@ const PENDING_BUILDS = new Set()
           const builds = run.builds && typeof run.builds === 'object' ? run.builds : {}
           let watching = false
           Object.keys(builds).forEach((project) => {
-            const record = builds[project]
-            if (record && ['running', 'queued', 'started'].includes(record.status)) {
-              watchBuild(run.id, record, project)
-              watching = true
-            }
+            const entry = builds[project]
+            if (!entry || typeof entry !== 'object') return
+            // Records are env-keyed now; older runs stored one flat record.
+            const records = entry.tag || entry.status || entry.buildUrl ? [entry] : Object.values(entry)
+            records.forEach((record) => {
+              if (record && ['running', 'queued', 'started'].includes(record.status)) {
+                watchBuild(run.id, record, project)
+                watching = true
+              }
+            })
           })
           if (!watching && run.phases && run.phases.build && run.phases.build.status === 'running') {
             watchBuild(run.id, run.build || {})

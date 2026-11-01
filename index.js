@@ -9,7 +9,7 @@ export const name = 'delivery-workflow'
 // through a context-bound property read; see lib/context.js.
 export const inject = ['tools', 'workingDirectory', 'systemPrompt']
 
-const ACTIONS = ['doctor', 'new', 'intake', 'phase', 'init', 'merge', 'verify', 'build', 'deploy', 'report', 'status', 'close', 'remove', 'doc']
+const ACTIONS = ['doctor', 'new', 'intake', 'phase', 'env', 'init', 'merge', 'verify', 'build', 'deploy', 'report', 'status', 'close', 'remove', 'doc']
 const PHASE_STATUSES = ['pending', 'running', 'passed', 'failed', 'blocked', 'skipped']
 
 const parameters = {
@@ -23,7 +23,9 @@ const parameters = {
       description: [
         'doctor: check config, repos, git/ssh and credentials; new: create a run;',
         'intake: validate and save the normalized requirement and test cases;',
-        'phase: record approval/status for a phase; init: fetch, checkout and prepare projects;',
+        'phase: record approval/status for a phase;',
+        'env: switch this run between test and prod — merge, build and deploy then act on that environment, and each environment keeps its own records;',
+        'init: fetch, checkout and prepare projects;',
         'merge: merge the run branch into each project\'s own env branch and push it, before build;',
         'verify: run configured checks and a secret scan; build: trigger or record a Jenkins build;',
         'deploy: preview/apply an environment deploy and health check; report: write report.md;',
