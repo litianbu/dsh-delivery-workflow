@@ -80,6 +80,9 @@ const PENDING_BUILDS = new Set()
       phases: { display: 'flex', alignItems: 'center', margin: '14px 0 12px', flexWrap: 'wrap' },
       bar: { width: 18, height: 1, background: STRONG, margin: '0 9px' },
       actions: { display: 'flex', gap: 7, flexWrap: 'wrap', paddingTop: 12, borderTop: '1px solid ' + BORDER, alignItems: 'center' },
+      // 标记完成 / 删除 end the record instead of advancing it, so they sit at the
+      // far right of the action bar, away from the run's own steps.
+      actionsRight: { display: 'flex', gap: 7, alignItems: 'center', marginLeft: 'auto' },
       hint: { fontSize: 12, opacity: 0.6, marginLeft: 'auto' },
       empty: { fontSize: 12, opacity: 0.6, padding: '2px 0' },
       wizard: { border: '1px solid ' + STRONG, borderRadius: 12, padding: '20px 22px', background: CARD_BG, marginBottom: 12 },
@@ -444,21 +447,28 @@ const PENDING_BUILDS = new Set()
                 onClick: () => props.onAction(name, run, { project: selected }),
               }, locked ? (name === 'build' ? '构建中…' : '执行中…') : (LABEL[name] || name))
             }),
-            h('button', { style: S.smGhost, onClick: () => props.onAction('close', run) }, '标记完成'),
-            h('button', {
-              style: Object.assign({}, S.smGhost, { color: DANGER }),
-              onClick: () => {
-                // Deleting a record cannot be undone, so it asks first and spells
-                // out what is NOT touched. Without a working confirm it refuses
-                // rather than deleting silently.
-                if (typeof window === 'undefined' || typeof window.confirm !== 'function') {
-                  console.warn('[delivery] window.confirm is unavailable; refusing to delete without confirmation')
-                  return
-                }
-                const ok = window.confirm('删除交付记录 ' + run.id + '？\n\n只删除本地记录，不会删除分支、代码或开发会话。\n此操作不可撤销。')
-                if (ok) props.onAction('remove', run)
-              },
-            }, '删除')) : null)
+            h('div', { style: S.actionsRight },
+              h('button', { style: S.sm, onClick: () => props.onAction('close', run) }, '标记完成'),
+              h('button', {
+                // A real button, not ghost text: deleting the record is the one
+                // action on this card that cannot be undone.
+                style: Object.assign({}, S.sm, {
+                  color: DANGER,
+                  borderColor: 'rgba(220,38,38,.45)',
+                  background: 'rgba(220,38,38,.08)',
+                }),
+                onClick: () => {
+                  // Deleting a record cannot be undone, so it asks first and spells
+                  // out what is NOT touched. Without a working confirm it refuses
+                  // rather than deleting silently.
+                  if (typeof window === 'undefined' || typeof window.confirm !== 'function') {
+                    console.warn('[delivery] window.confirm is unavailable; refusing to delete without confirmation')
+                    return
+                  }
+                  const ok = window.confirm('删除交付记录 ' + run.id + '？\n\n只删除本地记录，不会删除分支、代码或开发会话。\n此操作不可撤销。')
+                  if (ok) props.onAction('remove', run)
+                },
+              }, '删除'))) : null)
           : null)
     }
 
